@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NetCore-Go WebSocket Client</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1e3a8a;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .connection-panel {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .status {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 3px;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .status.connected {
+            background-color: #10b981;
+            color: white;
+        }
+        .status.disconnected {
+            background-color: #ef4444;
+            color: white;
+        }
+        .status.connecting {
+            background-color: #f59e0b;
+            color: white;
+        }
+        input[type="text"], input[type="url"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #1e3a8a;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #1e40af;
+        }
+        button:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+        .message-panel {
+            margin-top: 20px;
+        }
+        .message-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .message-input input {
+            flex: 1;
+            margin-bottom: 0;
+        }
+        .message-type {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: white;
+        }
+        .messages {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            background-color: #fafafa;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .message {
+            margin-bottom: 8px;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        .message.sent {
+            background-color: #dbeafe;
+            text-align: right;
+        }
+        .message.received {
+            background-color: #dcfce7;
+        }
+        .message.system {
+            background-color: #fef3c7;
+            font-style: italic;
+        }
+        .timestamp {
+            color: #6b7280;
+            font-size: 12px;
+        }
+        .stats {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f3f4f6;
+            border-radius: 5px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+        }
+        .stat-item {
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1e3a8a;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 NetCore-Go WebSocket Client</h1>
+        
+        <div class="connection-panel">
+            <div class="status disconnected" id="status">未连接</div>
+            <div>
+                <input type="url" id="serverUrl" placeholder="WebSocket服务器地址" value="ws://localhost:8082">
+                <button id="connectBtn" onclick="connect()">连接</button>
+                <button id="disconnectBtn" onclick="disconnect()" disabled>断开</button>
+                <button onclick="clearMessages()">清空消息</button>
+            </div>
+        </div>
+        
+        <div class="message-panel">
+            <div class="message-input">
+                <select class="message-type" id="messageType">
+                    <option value="text">文本消息</option>
+                    <option value="binary">二进制消息</option>
+                </select>
+                <input type="text" id="messageInput" placeholder="输入消息内容" onkeypress="handleKeyPress(event)">
+                <button id="sendBtn" onclick="sendMessage()" disabled>发送</button>
+            </div>
+            
+            <div class="messages" id="messages"></div>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-value" id="sentCount">0</div>
+                <div class="stat-label">发送消息</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="receivedCount">0</div>
+                <div class="stat-label">接收消息</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="connectionTime">--</div>
+                <div class="stat-label">连接时长</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let sentCount = 0;
+        let receivedCount = 0;
+        let connectTime = null;
+        let connectionTimer = null;
+
+        function updateStatus(status, text) {
+            const statusEl = document.getElementById('status');
+            statusEl.className = `status ${status}`;
+            statusEl.textContent = text;
+        }
+
+        function updateButtons(connected) {
+            document.getElementById('connectBtn').disabled = connected;
+            document.getElementById('disconnectBtn').disabled = !connected;
+            document.getElementById('sendBtn').disabled = !connected;
+        }
+
+        function addMessage(type, content, timestamp = new Date()) {
+            const messagesEl = document.getElementById('messages');
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${type}`;
+            
+            const timeStr = timestamp.toLocaleTimeString();
+            messageEl.innerHTML = `
+                <div>${content}</div>
+                <div class="timestamp">${timeStr}</div>
+            `;
+            
+            messagesEl.appendChild(messageEl);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        function updateStats() {
+            document.getElementById('sentCount').textContent = sentCount;
+            document.getElementById('receivedCount').textContent = receivedCount;
+            
+            if (connectTime) {
+                const duration = Math.floor((Date.now() - connectTime) / 1000);
+                const minutes = Math.floor(duration / 60);
+                const seconds = duration % 60;
+                document.getElementById('connectionTime').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            } else {
+                document.getElementById('connectionTime').textContent = '--';
+            }
+        }
+
+        function connect() {
+            const url = document.getElementById('serverUrl').value;
+            if (!url) {
+                alert('请输入WebSocket服务器地址');
+                return;
+            }
+
+            updateStatus('connecting', '连接中...');
+            
+            try {
+                ws = new WebSocket(url);
+                
+                ws.onopen = function(event) {
+                    updateStatus('connected', '已连接');
+                    updateButtons(true);
+                    connectTime = Date.now();
+                    addMessage('system', '✅ 连接成功');
+                    
+                    // 启动连接时长计时器
+                    connectionTimer = setInterval(updateStats, 1000);
+                };
+                
+                ws.onmessage = function(event) {
+                    receivedCount++;
+                    let content;
+                    
+                    if (event.data instanceof Blob) {
+                        content = `📦 二进制消息 (${event.data.size} bytes)`;
+                    } else {
+                        content = `📨 ${event.data}`;
+                    }
+                    
+                    addMessage('received', content);
+                    updateStats();
+                };
+                
+                ws.onclose = function(event) {
+                    updateStatus('disconnected', '未连接');
+                    updateButtons(false);
+                    connectTime = null;
+                    
+                    if (connectionTimer) {
+                        clearInterval(connectionTimer);
+                        connectionTimer = null;
+                    }
+                    
+                    if (event.wasClean) {
+                        addMessage('system', '🔌 连接已关闭');
+                    } else {
+                        addMessage('system', `❌ 连接异常关闭: ${event.code} ${event.reason}`);
+                    }
+                    updateStats();
+                };
+                
+                ws.onerror = function(error) {
+                    addMessage('system', `❌ 连接错误: ${error}`);
+                    console.error('WebSocket error:', error);
+                };
+                
+            } catch (error) {
+                updateStatus('disconnected', '连接失败');
+                addMessage('system', `❌ 连接失败: ${error.message}`);
+            }
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const messageType = document.getElementById('messageType').value;
+            const message = input.value.trim();
+            
+            if (!message) {
+                alert('请输入消息内容');
+                return;
+            }
+            
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('WebSocket未连接');
+                return;
+            }
+            
+            try {
+                if (messageType === 'binary') {
+                    // 发送二进制数据
+                    const encoder = new TextEncoder();
+                    const data = encoder.encode(message);
+                    ws.send(data);
+                    addMessage('sent', `📦 二进制: ${message}`);
+                } else {
+                    // 发送文本数据
+                    ws.send(message);
+                    addMessage('sent', `📤 ${message}`);
+                }
+                
+                sentCount++;
+                input.value = '';
+                updateStats();
+                
+            } catch (error) {
+                addMessage('system', `❌ 发送失败: ${error.message}`);
+            }
+        }
+
+        function clearMessages() {
+            document.getElementById('messages').innerHTML = '';
+            sentCount = 0;
+            receivedCount = 0;
+            updateStats();
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        // 初始化
+        updateStats();
+        
+        // 页面关闭时断开连接
+        window.addEventListener('beforeunload', function() {
+            if (ws) {
+                ws.close();
+            }
+        });
+    </script>
+</body>
+</html>
