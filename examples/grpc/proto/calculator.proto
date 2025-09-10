@@ -1,0 +1,86 @@
+// Calculator service protobuf definition
+// Author: NetCore-Go Team
+// Created: 2024
+
+syntax = "proto3";
+
+package calculator;
+
+option go_package = "github.com/phuhao00/netcore-go/examples/grpc/proto/calculator";
+
+// CalculateRequest message
+message CalculateRequest {
+  double a = 1;
+  double b = 2;
+}
+
+// CalculateResponse message
+message CalculateResponse {
+  double result = 1;
+}
+
+// DivideRequest message
+message DivideRequest {
+  double dividend = 1;
+  double divisor = 2;
+}
+
+// DivideResponse message
+message DivideResponse {
+  double result = 1;
+  string error = 2;
+}
+
+// FactorialRequest message
+message FactorialRequest {
+  int32 number = 1;
+}
+
+// FactorialResponse message
+message FactorialResponse {
+  int64 result = 1;
+}
+
+// PrimeNumbersRequest message
+message PrimeNumbersRequest {
+  int32 limit = 1;
+}
+
+// PrimeNumber message
+message PrimeNumber {
+  int32 number = 1;
+  bool is_prime = 2;
+}
+
+// SumRequest message for streaming
+message SumRequest {
+  int32 number = 1;
+}
+
+// SumResponse message
+message SumResponse {
+  int32 sum = 1;
+}
+
+// CalculatorService definition
+service CalculatorService {
+  // Basic arithmetic operations
+  rpc Add(CalculateRequest) returns (CalculateResponse);
+  rpc Subtract(CalculateRequest) returns (CalculateResponse);
+  rpc Multiply(CalculateRequest) returns (CalculateResponse);
+  rpc Divide(DivideRequest) returns (DivideResponse);
+  
+  // Advanced operations
+  rpc Factorial(FactorialRequest) returns (FactorialResponse);
+  rpc Power(CalculateRequest) returns (CalculateResponse);
+  rpc SquareRoot(CalculateRequest) returns (CalculateResponse);
+  
+  // Server streaming: Generate prime numbers up to limit
+  rpc GeneratePrimes(PrimeNumbersRequest) returns (stream PrimeNumber);
+  
+  // Client streaming: Calculate sum of streamed numbers
+  rpc CalculateSum(stream SumRequest) returns (SumResponse);
+  
+  // Bidirectional streaming: Real-time calculator
+  rpc RealTimeCalculate(stream CalculateRequest) returns (stream CalculateResponse);
+}

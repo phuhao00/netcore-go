@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NetCore-Go 聊天室</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            width: 90%;
+            max-width: 1200px;
+            height: 80vh;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: #f8f9fa;
+            border-right: 1px solid #e9ecef;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background: #495057;
+            color: white;
+            text-align: center;
+        }
+
+        .sidebar-header h2 {
+            margin-bottom: 10px;
+        }
+
+        .room-info {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .user-list {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .user-list h3 {
+            margin-bottom: 15px;
+            color: #495057;
+            font-size: 16px;
+        }
+
+        .user-item {
+            padding: 8px 12px;
+            margin-bottom: 5px;
+            background: #e9ecef;
+            border-radius: 20px;
+            font-size: 14px;
+            color: #495057;
+        }
+
+        .user-item.current {
+            background: #007bff;
+            color: white;
+        }
+
+        .stats {
+            padding: 20px;
+            border-top: 1px solid #e9ecef;
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            padding: 20px;
+            background: #fff;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .connection-status {
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .connection-status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .connection-status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .message-username {
+            font-weight: 600;
+            color: #007bff;
+            margin-right: 10px;
+        }
+
+        .message-time {
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .message-content {
+            background: white;
+            padding: 10px 15px;
+            border-radius: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            max-width: 70%;
+        }
+
+        .message.own .message-content {
+            background: #007bff;
+            color: white;
+            margin-left: auto;
+        }
+
+        .message.own .message-header {
+            justify-content: flex-end;
+        }
+
+        .message.system {
+            text-align: center;
+        }
+
+        .message.system .message-content {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+            margin: 0 auto;
+            max-width: none;
+            display: inline-block;
+        }
+
+        .input-area {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .input-form {
+            display: flex;
+            gap: 10px;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid #ced4da;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .message-input:focus {
+            border-color: #007bff;
+        }
+
+        .send-button {
+            padding: 12px 25px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+
+        .send-button:hover {
+            background: #0056b3;
+        }
+
+        .send-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .login-form {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .login-card {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 400px;
+        }
+
+        .login-card h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #495057;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #495057;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ced4da;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            border-color: #007bff;
+        }
+
+        .login-button {
+            width: 100%;
+            padding: 12px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .login-button:hover {
+            background: #0056b3;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                width: 100%;
+                height: 100vh;
+                border-radius: 0;
+            }
+
+            .sidebar {
+                width: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 登录表单 -->
+    <div id="loginForm" class="login-form">
+        <div class="login-card">
+            <h2>加入聊天室</h2>
+            <form id="loginFormElement">
+                <div class="form-group">
+                    <label for="username">用户名</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="roomId">房间ID</label>
+                    <input type="text" id="roomId" name="roomId" value="general" required>
+                </div>
+                <button type="submit" class="login-button">加入聊天室</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 主聊天界面 -->
+    <div id="chatContainer" class="container hidden">
+        <!-- 侧边栏 -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>聊天室</h2>
+                <div class="room-info">
+                    房间: <span id="currentRoom">-</span>
+                </div>
+            </div>
+            <div class="user-list">
+                <h3>在线用户</h3>
+                <div id="userList"></div>
+            </div>
+            <div class="stats">
+                <div>连接状态: <span id="connectionStatus">未连接</span></div>
+                <div>在线用户: <span id="userCount">0</span></div>
+                <div>消息数: <span id="messageCount">0</span></div>
+            </div>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="main-content">
+            <div class="chat-header">
+                <div class="chat-title">NetCore-Go 聊天室</div>
+                <div id="connectionIndicator" class="connection-status disconnected">未连接</div>
+            </div>
+            <div id="messages" class="messages"></div>
+            <div class="input-area">
+                <form id="messageForm" class="input-form">
+                    <input type="text" id="messageInput" class="message-input" placeholder="输入消息..." disabled>
+                    <button type="submit" id="sendButton" class="send-button" disabled>发送</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class ChatRoom {
+            constructor() {
+                this.ws = null;
+                this.currentUser = null;
+                this.currentRoom = null;
+                this.messageCount = 0;
+                this.userList = [];
+                
+                this.initElements();
+                this.bindEvents();
+            }
+
+            initElements() {
+                // 登录表单元素
+                this.loginForm = document.getElementById('loginForm');
+                this.loginFormElement = document.getElementById('loginFormElement');
+                this.usernameInput = document.getElementById('username');
+                this.roomIdInput = document.getElementById('roomId');
+
+                // 聊天界面元素
+                this.chatContainer = document.getElementById('chatContainer');
+                this.messagesContainer = document.getElementById('messages');
+                this.messageForm = document.getElementById('messageForm');
+                this.messageInput = document.getElementById('messageInput');
+                this.sendButton = document.getElementById('sendButton');
+                
+                // 状态显示元素
+                this.connectionIndicator = document.getElementById('connectionIndicator');
+                this.connectionStatus = document.getElementById('connectionStatus');
+                this.currentRoomSpan = document.getElementById('currentRoom');
+                this.userListContainer = document.getElementById('userList');
+                this.userCountSpan = document.getElementById('userCount');
+                this.messageCountSpan = document.getElementById('messageCount');
+            }
+
+            bindEvents() {
+                // 登录表单提交
+                this.loginFormElement.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.login();
+                });
+
+                // 消息表单提交
+                this.messageForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.sendMessage();
+                });
+
+                // 回车发送消息
+                this.messageInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+
+                // 页面关闭时断开连接
+                window.addEventListener('beforeunload', () => {
+                    if (this.ws) {
+                        this.ws.close();
+                    }
+                });
+            }
+
+            login() {
+                const username = this.usernameInput.value.trim();
+                const roomId = this.roomIdInput.value.trim();
+
+                if (!username || !roomId) {
+                    alert('请输入用户名和房间ID');
+                    return;
+                }
+
+                this.currentUser = {
+                    id: this.generateUserId(),
+                    username: username
+                };
+                this.currentRoom = roomId;
+
+                this.connectWebSocket();
+            }
+
+            generateUserId() {
+                return 'user_' + Math.random().toString(36).substr(2, 9);
+            }
+
+            connectWebSocket() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}/ws?user_id=${this.currentUser.id}&username=${encodeURIComponent(this.currentUser.username)}&room_id=${encodeURIComponent(this.currentRoom)}`;
+
+                this.ws = new WebSocket(wsUrl);
+
+                this.ws.onopen = () => {
+                    console.log('WebSocket连接已建立');
+                    this.updateConnectionStatus(true);
+                    this.showChatInterface();
+                };
+
+                this.ws.onmessage = (event) => {
+                    const message = JSON.parse(event.data);
+                    this.handleMessage(message);
+                };
+
+                this.ws.onclose = () => {
+                    console.log('WebSocket连接已关闭');
+                    this.updateConnectionStatus(false);
+                    this.showLoginForm();
+                };
+
+                this.ws.onerror = (error) => {
+                    console.error('WebSocket错误:', error);
+                    alert('连接失败，请重试');
+                };
+            }
+
+            showChatInterface() {
+                this.loginForm.classList.add('hidden');
+                this.chatContainer.classList.remove('hidden');
+                this.currentRoomSpan.textContent = this.currentRoom;
+                this.messageInput.disabled = false;
+                this.sendButton.disabled = false;
+                this.messageInput.focus();
+            }
+
+            showLoginForm() {
+                this.chatContainer.classList.add('hidden');
+                this.loginForm.classList.remove('hidden');
+                this.messageInput.disabled = true;
+                this.sendButton.disabled = true;
+            }
+
+            updateConnectionStatus(connected) {
+                if (connected) {
+                    this.connectionIndicator.textContent = '已连接';
+                    this.connectionIndicator.className = 'connection-status connected';
+                    this.connectionStatus.textContent = '已连接';
+                } else {
+                    this.connectionIndicator.textContent = '未连接';
+                    this.connectionIndicator.className = 'connection-status disconnected';
+                    this.connectionStatus.textContent = '未连接';
+                }
+            }
+
+            handleMessage(message) {
+                switch (message.type) {
+                    case 'chat':
+                        this.displayChatMessage(message);
+                        break;
+                    case 'system':
+                        this.displaySystemMessage(message);
+                        break;
+                    case 'user_list':
+                        this.updateUserList(message);
+                        break;
+                }
+            }
+
+            displayChatMessage(message) {
+                const messageElement = document.createElement('div');
+                messageElement.className = 'message';
+                
+                if (message.user_id === this.currentUser.id) {
+                    messageElement.classList.add('own');
+                }
+
+                const time = new Date(message.timestamp).toLocaleTimeString();
+                
+                messageElement.innerHTML = `
+                    <div class="message-header">
+                        <span class="message-username">${this.escapeHtml(message.username)}</span>
+                        <span class="message-time">${time}</span>
+                    </div>
+                    <div class="message-content">${this.escapeHtml(message.content)}</div>
+                `;
+
+                this.messagesContainer.appendChild(messageElement);
+                this.scrollToBottom();
+                this.updateMessageCount();
+            }
+
+            displaySystemMessage(message) {
+                const messageElement = document.createElement('div');
+                messageElement.className = 'message system';
+                
+                const time = new Date(message.timestamp).toLocaleTimeString();
+                
+                messageElement.innerHTML = `
+                    <div class="message-content">${this.escapeHtml(message.content)} (${time})</div>
+                `;
+
+                this.messagesContainer.appendChild(messageElement);
+                this.scrollToBottom();
+            }
+
+            updateUserList(message) {
+                try {
+                    // 解析用户列表（从字符串格式）
+                    const userListStr = message.content.replace(/[\[\]]/g, '');
+                    this.userList = userListStr ? userListStr.split(' ') : [];
+                    
+                    this.userListContainer.innerHTML = '';
+                    
+                    this.userList.forEach(username => {
+                        if (username.trim()) {
+                            const userElement = document.createElement('div');
+                            userElement.className = 'user-item';
+                            if (username === this.currentUser.username) {
+                                userElement.classList.add('current');
+                            }
+                            userElement.textContent = username;
+                            this.userListContainer.appendChild(userElement);
+                        }
+                    });
+                    
+                    this.userCountSpan.textContent = this.userList.length;
+                } catch (error) {
+                    console.error('解析用户列表失败:', error);
+                }
+            }
+
+            sendMessage() {
+                const content = this.messageInput.value.trim();
+                if (!content || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
+                    return;
+                }
+
+                const message = {
+                    type: 'chat',
+                    content: content
+                };
+
+                this.ws.send(JSON.stringify(message));
+                this.messageInput.value = '';
+            }
+
+            scrollToBottom() {
+                this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+            }
+
+            updateMessageCount() {
+                this.messageCount++;
+                this.messageCountSpan.textContent = this.messageCount;
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        }
+
+        // 初始化聊天室
+        document.addEventListener('DOMContentLoaded', () => {
+            new ChatRoom();
+        });
+    </script>
+</body>
+</html>

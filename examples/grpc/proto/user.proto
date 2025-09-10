@@ -1,0 +1,114 @@
+// User service protobuf definition
+// Author: NetCore-Go Team
+// Created: 2024
+
+syntax = "proto3";
+
+package user;
+
+option go_package = "github.com/phuhao00/netcore-go/examples/grpc/proto/user";
+
+// User message
+message User {
+  int32 id = 1;
+  string name = 2;
+  string email = 3;
+  int32 age = 4;
+  string created_at = 5;
+  string updated_at = 6;
+}
+
+// GetUserRequest message
+message GetUserRequest {
+  int32 id = 1;
+}
+
+// GetUserResponse message
+message GetUserResponse {
+  User user = 1;
+}
+
+// CreateUserRequest message
+message CreateUserRequest {
+  string name = 1;
+  string email = 2;
+  int32 age = 3;
+}
+
+// CreateUserResponse message
+message CreateUserResponse {
+  User user = 1;
+}
+
+// UpdateUserRequest message
+message UpdateUserRequest {
+  int32 id = 1;
+  string name = 2;
+  string email = 3;
+  int32 age = 4;
+}
+
+// UpdateUserResponse message
+message UpdateUserResponse {
+  User user = 1;
+}
+
+// DeleteUserRequest message
+message DeleteUserRequest {
+  int32 id = 1;
+}
+
+// DeleteUserResponse message
+message DeleteUserResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// ListUsersRequest message
+message ListUsersRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+  string search = 3;
+}
+
+// ListUsersResponse message
+message ListUsersResponse {
+  repeated User users = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+// UserService definition
+service UserService {
+  // Get user by ID
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+  
+  // Create new user
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+  
+  // Update existing user
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+  
+  // Delete user by ID
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+  
+  // List users with pagination
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+  
+  // Stream users (server streaming)
+  rpc StreamUsers(ListUsersRequest) returns (stream User);
+  
+  // Batch create users (client streaming)
+  rpc BatchCreateUsers(stream CreateUserRequest) returns (CreateUserResponse);
+  
+  // Chat with users (bidirectional streaming)
+  rpc ChatWithUsers(stream ChatMessage) returns (stream ChatMessage);
+}
+
+// ChatMessage for bidirectional streaming example
+message ChatMessage {
+  int32 user_id = 1;
+  string message = 2;
+  string timestamp = 3;
+}

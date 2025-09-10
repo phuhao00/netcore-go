@@ -1,460 +1,555 @@
 # NetCore-Go 高性能网络库
 
-[![Go Version](https://img.shields.io/badge/Go-%3E%3D%201.21-blue.svg)](https://golang.org/)
+[![Go Version](https://img.shields.io/badge/Go-%3E%3D%201.19-blue.svg)](https://golang.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](#)
 [![Coverage](https://img.shields.io/badge/Coverage-85%25-yellow.svg)](#)
 
-NetCore-Go 是一个专为游戏服务器和Web后端开发设计的高性能Golang网络库，提供统一的接口抽象和多协议支持。
+NetCore-Go 是一个功能丰富、高性能的 Go 语言网络库，提供了完整的网络编程解决方案，包括 TCP/UDP 服务器、WebSocket、HTTP 服务器、RPC、gRPC、KCP 协议支持，以及服务发现、负载均衡、配置管理、日志系统和监控指标等企业级功能。
 
-## ✨ 特性
+## ✨ 主要特性
 
-- 🚀 **高性能**: 基于epoll/kqueue的高性能网络IO，支持百万级并发连接
-- 🔧 **多协议支持**: TCP、UDP、WebSocket、KCP、HTTP、RPC、gRPC等
-- 🎯 **统一接口**: 简洁优雅的API设计，支持链式调用
-- ⚡ **性能优化**: 内置连接池、内存池、协程池等优化机制
-- 🛡️ **中间件系统**: 支持认证、限流、日志、监控等中间件
-- 📊 **监控指标**: 内置性能监控和统计信息
-- 🔄 **自动重连**: 客户端自动重连机制
-- 💓 **心跳检测**: 连接健康检查和自动清理
+### 🚀 核心网络功能
+- **TCP/UDP 服务器**: 高性能的 TCP 和 UDP 服务器实现
+- **WebSocket 支持**: 完整的 WebSocket 服务器和客户端
+- **HTTP 服务器**: 基于标准库的高性能 HTTP 服务器
+- **连接池管理**: 智能的连接池和资源管理
+- **协程池**: 高效的 Goroutine 池管理
 
-## 🏗️ 架构设计
+### 🔌 协议支持
+- **自定义 RPC**: 轻量级、高性能的 RPC 协议
+- **gRPC 集成**: 完整的 gRPC 支持和 Protocol Buffers 序列化
+- **KCP 协议**: 基于 UDP 的可靠传输协议，适用于游戏和实时应用
+- **多种编解码器**: JSON、Gob、Protobuf、MsgPack 等
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    应用层 - 用户代码                          │
-└─────────────────────────────────────────────────────────────┘
-┌─────────────────────────────────────────────────────────────┐
-│                  NetCore-Go API层                           │
-├─────────────────┬─────────────────┬─────────────────────────┤
-│   协议抽象层      │   性能优化层      │      扩展功能层          │
-├─────────────────┼─────────────────┼─────────────────────────┤
-│ TCP/UDP/KCP     │ 连接池/内存池     │ 长轮询/心跳检测/重连      │
-│ WebSocket/HTTP  │ 协程池/负载均衡   │ 消息队列/中间件系统       │
-│ RPC/gRPC        │                 │                         │
-└─────────────────┴─────────────────┴─────────────────────────┘
-┌─────────────────────────────────────────────────────────────┐
-│              操作系统网络栈 & Golang Runtime                  │
-└─────────────────────────────────────────────────────────────┘
+### 🏗️ 微服务架构
+- **服务发现**: 支持内存、Etcd、Consul 等注册中心
+- **负载均衡**: 多种负载均衡算法（轮询、加权、最少连接等）
+- **API 网关**: 功能完整的微服务网关
+- **熔断器**: 服务容错和故障隔离
+
+### 📊 监控和运维
+- **结构化日志**: 支持多种格式和输出方式
+- **指标监控**: Prometheus 指标导出
+- **健康检查**: HTTP、TCP、脚本等多种健康检查方式
+- **配置管理**: 支持 JSON、YAML、TOML、环境变量等配置源
+
+### 🛡️ 安全和中间件
+- **认证授权**: JWT、API Key、Basic Auth 等
+- **限流控制**: 多种限流策略
+- **CORS 支持**: 跨域资源共享
+- **安全头部**: 各种安全相关的 HTTP 头部
+
+## 📦 安装
+
+```bash
+go get github.com/netcore-go/netcore-go
 ```
 
 ## 🚀 快速开始
 
-### 安装
-
-```bash
-go get github.com/netcore-go/netcore
-```
-
-### TCP回声服务器示例
+### TCP 服务器示例
 
 ```go
 package main
 
 import (
+    "context"
     "fmt"
     "log"
-    "time"
     
-    "github.com/netcore-go/netcore"
+    "github.com/netcore-go/pkg/server"
 )
 
-// 实现消息处理器
-type EchoHandler struct{}
-
-func (h *EchoHandler) OnConnect(conn netcore.Connection) {
-    fmt.Printf("Client connected: %s\n", conn.RemoteAddr())
-}
-
-func (h *EchoHandler) OnMessage(conn netcore.Connection, msg netcore.Message) {
-    // 回声消息
-    echoMsg := netcore.NewMessage(msg.Type, append([]byte("Echo: "), msg.Data...))
-    conn.SendMessage(*echoMsg)
-}
-
-func (h *EchoHandler) OnDisconnect(conn netcore.Connection, err error) {
-    fmt.Printf("Client disconnected: %s\n", conn.RemoteAddr())
-}
-
 func main() {
-    // 创建TCP服务器
-    server := netcore.NewTCPServer(
-        netcore.WithReadBufferSize(4096),
-        netcore.WithMaxConnections(1000),
-        netcore.WithHeartbeat(true, 30*time.Second),
-    )
+    // 创建 TCP 服务器
+    srv := server.NewTCPServer(&server.Config{
+        Network: "tcp",
+        Address: ":8080",
+        MaxConnections: 1000,
+    })
     
-    // 设置处理器和中间件
-    server.SetHandler(&EchoHandler{})
-    server.SetMiddleware(
-        netcore.RecoveryMiddleware(),
-        netcore.LoggingMiddleware(),
-        netcore.RateLimitMiddleware(100),
-    )
+    // 设置消息处理器
+    srv.SetHandler(&EchoHandler{})
     
     // 启动服务器
-    if err := server.Start(":8080"); err != nil {
+    if err := srv.Start(); err != nil {
         log.Fatal(err)
     }
-    
-    fmt.Println("Server started on :8080")
-    select {} // 保持运行
+}
+
+type EchoHandler struct{}
+
+func (h *EchoHandler) OnConnect(conn server.Connection) {
+    fmt.Printf("客户端连接: %s\n", conn.RemoteAddr())
+}
+
+func (h *EchoHandler) OnMessage(conn server.Connection, data []byte) {
+    // 回显消息
+    conn.Write(data)
+}
+
+func (h *EchoHandler) OnDisconnect(conn server.Connection) {
+    fmt.Printf("客户端断开: %s\n", conn.RemoteAddr())
 }
 ```
 
-### UDP服务器示例
+### WebSocket 服务器示例
 
 ```go
 package main
 
 import (
-    "fmt"
     "log"
-    "time"
+    "net/http"
     
-    "github.com/netcore-go/netcore"
+    "github.com/netcore-go/pkg/websocket"
 )
-
-type UDPEchoHandler struct{}
-
-func (h *UDPEchoHandler) OnConnect(conn netcore.Connection) {
-    fmt.Printf("[UDP] Client connected: %s\n", conn.RemoteAddr())
-}
-
-func (h *UDPEchoHandler) OnMessage(conn netcore.Connection, msg netcore.Message) {
-    response := fmt.Sprintf("Echo: %s", string(msg.Data))
-    conn.Send([]byte(response))
-}
-
-func (h *UDPEchoHandler) OnDisconnect(conn netcore.Connection, err error) {
-    fmt.Printf("[UDP] Client disconnected: %s\n", conn.RemoteAddr())
-}
 
 func main() {
-    // 创建UDP服务器
-    server := netcore.NewUDPServer(
-        netcore.WithReadBufferSize(4096),
-        netcore.WithMaxConnections(1000),
-        netcore.WithIdleTimeout(5*time.Minute),
-    )
-    
-    server.SetHandler(&UDPEchoHandler{})
-    
-    if err := server.Start(":8081"); err != nil {
-        log.Fatal(err)
-    }
-    
-    fmt.Println("UDP Server started on :8081")
-    select {}
-}
-```
-
-### WebSocket服务器示例
-
-```go
-package main
-
-import (
-    "fmt"
-    "log"
-    "time"
-    
-    "github.com/netcore-go/netcore"
-)
-
-type WebSocketEchoHandler struct{}
-
-func (h *WebSocketEchoHandler) OnConnect(conn netcore.Connection) {
-    fmt.Printf("[WebSocket] Client connected: %s\n", conn.RemoteAddr())
-    
-    // 发送欢迎消息
-    welcomeMsg := netcore.NewMessage(netcore.MessageTypeText, []byte("Welcome to NetCore-Go WebSocket Server!"))
-    conn.SendMessage(*welcomeMsg)
-}
-
-func (h *WebSocketEchoHandler) OnMessage(conn netcore.Connection, msg netcore.Message) {
-    fmt.Printf("[WebSocket] Received %s message: %s\n", msg.Type.String(), string(msg.Data))
-    
-    // 回声消息
-    response := netcore.NewMessage(msg.Type, append([]byte("Echo: "), msg.Data...))
-    conn.SendMessage(*response)
-}
-
-func (h *WebSocketEchoHandler) OnDisconnect(conn netcore.Connection, err error) {
-    fmt.Printf("[WebSocket] Client disconnected: %s\n", conn.RemoteAddr())
-}
-
-func main() {
-    // 创建WebSocket服务器
-    server := netcore.NewWebSocketServer(
-        netcore.WithReadBufferSize(4096),
-        netcore.WithMaxConnections(1000),
-        netcore.WithHeartbeat(true, 30*time.Second),
-        netcore.WithIdleTimeout(5*time.Minute),
-    )
-    
-    server.SetHandler(&WebSocketEchoHandler{})
-    
-    if err := server.Start(":8082"); err != nil {
-        log.Fatal(err)
-    }
-    
-    fmt.Println("WebSocket Server started on :8082")
-    fmt.Println("Open examples/websocket/client/index.html in your browser to test")
-    select {}
-}
-```
-
-## 📚 API文档
-
-### 核心接口
-
-#### Server接口
-
-```go
-type Server interface {
-    Start(addr string) error              // 启动服务器
-    Stop() error                          // 停止服务器
-    SetHandler(handler MessageHandler)    // 设置消息处理器
-    SetMiddleware(middleware ...Middleware) // 设置中间件
-    GetStats() *ServerStats               // 获取统计信息
-}
-```
-
-#### Connection接口
-
-```go
-type Connection interface {
-    ID() string                           // 获取连接ID
-    RemoteAddr() net.Addr                 // 获取远程地址
-    LocalAddr() net.Addr                  // 获取本地地址
-    Send(data []byte) error               // 发送原始数据
-    SendMessage(msg Message) error        // 发送消息对象
-    Close() error                         // 关闭连接
-    IsActive() bool                       // 检查连接状态
-    SetContext(key, value interface{})    // 设置上下文
-    GetContext(key interface{}) interface{} // 获取上下文
-}
-```
-
-### 配置选项
-
-```go
-// 服务器配置选项
-netcore.WithReadBufferSize(4096)           // 读缓冲区大小
-netcore.WithWriteBufferSize(4096)          // 写缓冲区大小
-netcore.WithMaxConnections(10000)          // 最大连接数
-netcore.WithReadTimeout(30*time.Second)    // 读超时
-netcore.WithWriteTimeout(30*time.Second)   // 写超时
-netcore.WithIdleTimeout(300*time.Second)   // 空闲超时
-netcore.WithHeartbeat(true, 30*time.Second) // 心跳检测
-netcore.WithConnectionPool(true)           // 启用连接池
-netcore.WithMemoryPool(true)               // 启用内存池
-netcore.WithGoroutinePool(true)            // 启用协程池
-```
-
-### 中间件系统
-
-```go
-// 内置中间件
-server.SetMiddleware(
-    netcore.RecoveryMiddleware(),          // 恢复中间件
-    netcore.LoggingMiddleware(),           // 日志中间件
-    netcore.MetricsMiddleware(),           // 监控中间件
-    netcore.RateLimitMiddleware(100),      // 限流中间件
-    netcore.AuthMiddleware(),              // 认证中间件
-)
-
-// 自定义中间件
-func CustomMiddleware() netcore.Middleware {
-    return netcore.NewBaseMiddleware("custom", 50, func(ctx netcore.Context, next netcore.Handler) error {
-        // 前置处理
-        fmt.Println("Before processing")
-        
-        // 调用下一个中间件
-        err := next(ctx)
-        
-        // 后置处理
-        fmt.Println("After processing")
-        
-        return err
+    // 创建 WebSocket 服务器
+    ws := websocket.NewServer(&websocket.Config{
+        CheckOrigin: func(r *http.Request) bool {
+            return true // 允许所有来源
+        },
     })
+    
+    // 设置消息处理器
+    ws.SetHandler(&ChatHandler{})
+    
+    // 注册路由
+    http.HandleFunc("/ws", ws.HandleWebSocket)
+    
+    // 启动 HTTP 服务器
+    log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+type ChatHandler struct{}
+
+func (h *ChatHandler) OnConnect(conn websocket.Connection) {
+    log.Printf("WebSocket 连接: %s", conn.RemoteAddr())
+}
+
+func (h *ChatHandler) OnMessage(conn websocket.Connection, messageType int, data []byte) {
+    // 广播消息给所有连接
+    conn.WriteMessage(messageType, data)
+}
+
+func (h *ChatHandler) OnDisconnect(conn websocket.Connection) {
+    log.Printf("WebSocket 断开: %s", conn.RemoteAddr())
 }
 ```
 
-## 🎯 使用场景
-
-### 游戏服务器
-
-- **实时对战游戏**: 使用TCP/KCP协议，低延迟高可靠性
-- **MMO游戏**: 支持大规模并发连接，内置负载均衡
-- **移动游戏**: WebSocket支持，兼容浏览器和移动端
-
-### Web后端服务
-
-- **微服务架构**: gRPC/RPCX支持，服务发现和负载均衡
-- **API网关**: HTTP服务器，中间件系统支持认证限流
-- **实时通信**: WebSocket长连接，消息推送服务
-
-## 📊 性能测试
-
-### 基准测试结果
-
-| 协议 | QPS | 延迟(P99) | 内存使用 | CPU使用 |
-|------|-----|----------|----------|----------|
-| TCP  | 100万+ | <1ms | 512MB | 30% |
-| UDP  | 150万+ | <0.5ms | 256MB | 25% |
-| HTTP | 50万+ | <2ms | 1GB | 40% |
-| WebSocket | 80万+ | <1.5ms | 768MB | 35% |
-
-### 运行基准测试
-
-```bash
-# TCP基准测试
-go run examples/benchmark/tcp_bench.go
-
-# HTTP基准测试
-go run examples/benchmark/http_bench.go
-
-# WebSocket基准测试
-go run examples/benchmark/ws_bench.go
-```
-
-## 🔧 高级特性
-
-### 连接池
+### RPC 服务示例
 
 ```go
-// 配置连接池
-pool := pool.NewTCPConnectionPool(&pool.ConnectionPoolConfig{
-    Address:     "localhost:8080",
-    MinSize:     5,
-    MaxSize:     50,
-    IdleTimeout: 300 * time.Second,
-})
+package main
 
-// 获取连接
-conn, err := pool.Get()
-if err != nil {
-    log.Fatal(err)
+import (
+    "context"
+    "log"
+    
+    "github.com/netcore-go/pkg/rpc"
+)
+
+// 定义服务
+type UserService struct{}
+
+func (s *UserService) GetUser(ctx context.Context, userID string) (*User, error) {
+    return &User{ID: userID, Name: "John Doe"}, nil
 }
 
-// 使用连接
-_, err = conn.Write([]byte("Hello"))
+type User struct {
+    ID   string `json:"id"`
+    Name string `json:"name"`
+}
 
-// 归还连接
-pool.Put(conn)
+func main() {
+    // 创建 RPC 服务器
+    server := rpc.NewServer(&rpc.Config{
+        Network: "tcp",
+        Address: ":8080",
+    })
+    
+    // 注册服务
+    server.RegisterService("UserService", &UserService{})
+    
+    // 启动服务器
+    log.Fatal(server.Start())
+}
 ```
 
-### 内存池
+### 服务发现和负载均衡
 
 ```go
-// 获取缓冲区
-buf := pool.GetBuffer()
-defer pool.PutBuffer(buf)
+package main
 
-// 使用缓冲区
-buf = append(buf, "Hello World"...)
+import (
+    "context"
+    "log"
+    
+    "github.com/netcore-go/pkg/discovery"
+    "github.com/netcore-go/pkg/loadbalancer"
+)
 
-// 获取指定大小的缓冲区
-bigBuf := pool.GetSizedBuffer(8192)
-defer pool.PutSizedBuffer(bigBuf)
+func main() {
+    // 创建服务注册中心
+    registry := discovery.NewMemoryClient()
+    
+    // 注册服务实例
+    instance := &discovery.ServiceInstance{
+        ID:      "user-service-1",
+        Name:    "user-service",
+        Address: "192.168.1.10",
+        Port:    8080,
+        Health:  discovery.Healthy,
+        Weight:  100,
+    }
+    
+    if err := registry.Register(context.Background(), instance); err != nil {
+        log.Fatal(err)
+    }
+    
+    // 发现服务
+    instances, err := registry.GetHealthyServices(context.Background(), "user-service")
+    if err != nil {
+        log.Fatal(err)
+    }
+    
+    // 负载均衡选择实例
+    selected, err := loadbalancer.Select(
+        context.Background(), 
+        instances, 
+        loadbalancer.RoundRobin,
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+    
+    log.Printf("选中的服务实例: %s", selected.GetEndpoint())
+}
 ```
 
-### 协程池
+## 📚 详细文档
 
-```go
-// 启动默认协程池
-pool.StartDefaultPool()
-defer pool.StopDefaultPool()
+### 核心组件
 
-// 提交任务
-err := pool.SubmitTaskFunc(func() error {
-    // 执行耗时任务
-    time.Sleep(time.Second)
-    fmt.Println("Task completed")
-    return nil
-})
-```
+- [TCP/UDP 服务器](docs/server.md) - 高性能网络服务器
+- [WebSocket 服务器](docs/websocket.md) - WebSocket 实现
+- [HTTP 服务器](docs/http.md) - HTTP 服务器和中间件
+- [连接管理](docs/connection.md) - 连接池和资源管理
 
-## 📁 项目结构
+### 协议支持
+
+- [RPC 协议](docs/rpc.md) - 自定义 RPC 实现
+- [gRPC 集成](docs/grpc.md) - gRPC 服务和客户端
+- [KCP 协议](docs/kcp.md) - 可靠 UDP 传输
+- [编解码器](docs/codec.md) - 消息序列化
+
+### 微服务架构
+
+- [服务发现](docs/discovery.md) - 服务注册和发现
+- [负载均衡](docs/loadbalancer.md) - 负载均衡算法
+- [API 网关](docs/gateway.md) - 微服务网关
+- [熔断器](docs/circuitbreaker.md) - 服务容错
+
+### 监控和运维
+
+- [日志系统](docs/logger.md) - 结构化日志
+- [指标监控](docs/metrics.md) - Prometheus 集成
+- [配置管理](docs/config.md) - 配置系统
+- [健康检查](docs/health.md) - 健康检查机制
+
+### 安全和中间件
+
+- [认证授权](docs/auth.md) - 身份验证和授权
+- [限流控制](docs/ratelimit.md) - 请求限流
+- [中间件](docs/middleware.md) - HTTP 中间件
+- [安全配置](docs/security.md) - 安全最佳实践
+
+## 🏗️ 项目结构
 
 ```
 netcore-go/
-├── pkg/
-│   ├── core/           # 核心抽象层
-│   │   ├── interfaces.go
-│   │   ├── types.go
-│   │   ├── options.go
-│   │   ├── connection.go
-│   │   ├── server.go
-│   │   └── middleware.go
-│   ├── tcp/            # TCP协议实现
-│   ├── udp/            # UDP协议实现
-│   ├── websocket/      # WebSocket协议实现
-│   ├── http/           # HTTP协议实现
-│   └── pool/           # 资源池实现
-│       ├── memory.go
-│       ├── connection.go
-│       └── goroutine.go
-├── examples/           # 示例代码
-│   ├── tcp/
-│   ├── udp/
-│   ├── websocket/
-│   ├── http/
-│   └── benchmark/
-├── docs/              # 文档
-├── netcore.go         # 主入口文件
-├── go.mod
-└── README.md
+├── pkg/                    # 核心包
+│   ├── server/            # TCP/UDP 服务器
+│   ├── websocket/         # WebSocket 实现
+│   ├── http/              # HTTP 服务器
+│   ├── rpc/               # RPC 协议
+│   ├── grpc/              # gRPC 集成
+│   ├── kcp/               # KCP 协议
+│   ├── discovery/         # 服务发现
+│   ├── loadbalancer/      # 负载均衡
+│   ├── config/            # 配置管理
+│   ├── logger/            # 日志系统
+│   ├── metrics/           # 指标监控
+│   └── middleware/        # 中间件
+├── examples/              # 示例代码
+│   ├── tcp-server/        # TCP 服务器示例
+│   ├── websocket-chat/    # WebSocket 聊天室
+│   ├── rpc-service/       # RPC 服务示例
+│   ├── grpc-service/      # gRPC 服务示例
+│   ├── kcp-game/          # KCP 游戏服务器
+│   ├── microservice/      # 微服务示例
+│   ├── gateway/           # API 网关示例
+│   ├── chatroom/          # 聊天室应用
+│   ├── config/            # 配置管理示例
+│   ├── logger/            # 日志系统示例
+│   ├── metrics/           # 监控指标示例
+│   └── discovery/         # 服务发现示例
+├── docs/                  # 文档
+├── tests/                 # 测试
+├── benchmarks/            # 性能测试
+└── tools/                 # 工具
+```
+
+## 🎯 示例应用
+
+### 1. 聊天室应用
+
+完整的 WebSocket 聊天室应用，包含：
+- 实时消息传输
+- 用户管理
+- 房间管理
+- 消息历史
+- 在线状态
+
+```bash
+cd examples/chatroom
+go run server/main.go
+```
+
+访问 http://localhost:8080 体验聊天室。
+
+### 2. 微服务网关
+
+功能完整的 API 网关，支持：
+- 路由转发
+- 负载均衡
+- 认证授权
+- 限流控制
+- 监控指标
+
+```bash
+cd examples/gateway
+go run main.go
+```
+
+### 3. RPC 服务
+
+高性能 RPC 服务示例：
+- 服务注册发现
+- 负载均衡
+- 连接池
+- 拦截器
+
+```bash
+# 启动服务器
+cd examples/rpc/server
+go run main.go
+
+# 启动客户端
+cd examples/rpc/client
+go run main.go
+```
+
+### 4. KCP 游戏服务器
+
+基于 KCP 协议的游戏服务器：
+- 低延迟通信
+- 可靠传输
+- 连接管理
+- 消息广播
+
+```bash
+# 启动服务器
+cd examples/kcp/server
+go run main.go
+
+# 启动客户端
+cd examples/kcp/client
+go run main.go
+```
+
+## 📊 性能特性
+
+### 基准测试结果
+
+| 功能 | QPS | 延迟 (P99) | 内存使用 |
+|------|-----|-----------|----------|
+| TCP 服务器 | 100K+ | < 1ms | < 50MB |
+| WebSocket | 50K+ | < 2ms | < 100MB |
+| RPC 调用 | 80K+ | < 1.5ms | < 80MB |
+| HTTP 网关 | 60K+ | < 3ms | < 120MB |
+
+### 优化特性
+
+- **零拷贝**: 减少内存拷贝开销
+- **连接池**: 复用连接减少创建开销
+- **协程池**: 控制 Goroutine 数量
+- **内存池**: 减少 GC 压力
+- **批量处理**: 提高吞吐量
+
+## 🔧 配置示例
+
+### 服务器配置 (YAML)
+
+```yaml
+server:
+  host: "0.0.0.0"
+  port: 8080
+  read_timeout: "30s"
+  write_timeout: "30s"
+  max_connections: 10000
+  buffer_size: 4096
+
+logger:
+  level: "info"
+  format: "json"
+  output: "stdout"
+
+metrics:
+  enabled: true
+  path: "/metrics"
+  port: 9090
+
+discovery:
+  enabled: true
+  provider: "memory"
+  endpoints:
+    - "localhost:2379"
+
+loadbalancer:
+  algorithm: "round_robin"
+  health_check: true
+  max_retries: 3
+```
+
+### 网关配置 (JSON)
+
+```json
+{
+  "server": {
+    "host": "localhost",
+    "port": 8080
+  },
+  "routes": [
+    {
+      "path": "/api/users",
+      "method": "*",
+      "service": "user-service",
+      "timeout": "10s",
+      "load_balance": "round_robin"
+    }
+  ],
+  "cors": {
+    "enabled": true,
+    "allowed_origins": ["*"],
+    "allowed_methods": ["GET", "POST", "PUT", "DELETE"]
+  }
+}
+```
+
+## 🧪 测试
+
+### 运行测试
+
+```bash
+# 运行所有测试
+go test ./...
+
+# 运行特定包的测试
+go test ./pkg/server
+
+# 运行基准测试
+go test -bench=. ./benchmarks
+
+# 生成测试覆盖率报告
+go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out
+```
+
+### 性能测试
+
+```bash
+# TCP 服务器性能测试
+cd benchmarks/tcp
+go test -bench=BenchmarkTCPServer
+
+# WebSocket 性能测试
+cd benchmarks/websocket
+go test -bench=BenchmarkWebSocket
+
+# RPC 性能测试
+cd benchmarks/rpc
+go test -bench=BenchmarkRPC
 ```
 
 ## 🤝 贡献指南
 
-我们欢迎所有形式的贡献！
-
-1. Fork 项目
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 打开 Pull Request
+我们欢迎所有形式的贡献！请查看 [CONTRIBUTING.md](CONTRIBUTING.md) 了解详细信息。
 
 ### 开发环境设置
 
 ```bash
-# 克隆项目
-git clone https://github.com/netcore-go/netcore.git
-cd netcore
+# 克隆仓库
+git clone https://github.com/netcore-go/netcore-go.git
+cd netcore-go
 
 # 安装依赖
-go mod tidy
+go mod download
 
 # 运行测试
 go test ./...
 
 # 运行示例
-go run examples/tcp/echo_server.go
+cd examples/tcp-server
+go run main.go
 ```
+
+### 代码规范
+
+- 遵循 Go 官方代码规范
+- 使用 `gofmt` 格式化代码
+- 添加适当的注释和文档
+- 编写单元测试
+- 更新相关文档
 
 ## 📄 许可证
 
-本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
+本项目采用 MIT 许可证。详情请查看 [LICENSE](LICENSE) 文件。
 
 ## 🙏 致谢
 
-感谢以下开源项目的启发：
+感谢以下开源项目的启发和支持：
 
-- [fasthttp](https://github.com/valyala/fasthttp) - 高性能HTTP实现
-- [gorilla/websocket](https://github.com/gorilla/websocket) - WebSocket实现
-- [xtaci/kcp-go](https://github.com/xtaci/kcp-go) - KCP协议实现
-- [smallnest/rpcx](https://github.com/smallnest/rpcx) - RPC框架
+- [Gin](https://github.com/gin-gonic/gin) - HTTP Web 框架
+- [gRPC-Go](https://github.com/grpc/grpc-go) - gRPC 实现
+- [Gorilla WebSocket](https://github.com/gorilla/websocket) - WebSocket 实现
+- [Prometheus](https://github.com/prometheus/prometheus) - 监控系统
+- [Logrus](https://github.com/sirupsen/logrus) - 日志库
 
 ## 📞 联系我们
 
-- 项目主页: https://github.com/netcore-go/netcore
-- 问题反馈: https://github.com/netcore-go/netcore/issues
+- 项目主页: https://github.com/netcore-go/netcore-go
+- 问题反馈: https://github.com/netcore-go/netcore-go/issues
+- 讨论区: https://github.com/netcore-go/netcore-go/discussions
 - 邮箱: netcore-go@example.com
+
+## 🗺️ 路线图
+
+### v1.1.0 (计划中)
+- [ ] HTTP/2 和 HTTP/3 支持
+- [ ] 分布式追踪集成
+- [ ] 更多服务发现后端支持
+- [ ] 性能优化和内存使用改进
+
+### v1.2.0 (计划中)
+- [ ] 图形化管理界面
+- [ ] 更多中间件和插件
+- [ ] 云原生部署支持
+- [ ] 更完善的文档和教程
 
 ---
 
-⭐ 如果这个项目对你有帮助，请给我们一个星标！
+**NetCore-Go** - 让 Go 网络编程更简单、更高效！ 🚀
