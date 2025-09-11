@@ -41,7 +41,7 @@ git clone https://github.com/YOUR_USERNAME/netcore-go.git
 cd netcore-go
 
 # 2. 添加上游仓库
-git remote add upstream https://github.com/netcore-go/netcore-go.git
+git remote add upstream https://github.com/netcore-go/netcore.git
 
 # 3. 安装依赖
 go mod download

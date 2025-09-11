@@ -18,10 +18,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"../../../pkg/core"
-	"../../../pkg/middleware"
-	"../../../pkg/pool"
-	"../../../netcore"
+	"github.com/netcore-go/pkg/core"
+	"github.com/netcore-go/pkg/middleware"
+	"github.com/netcore-go/pkg/pool"
+	"github.com/netcore-go"
 )
 
 // BenchmarkConfig 基准测试配置

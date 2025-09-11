@@ -13,8 +13,8 @@ import (
 
 	"github.com/xtaci/kcp-go/v5"
 
-	"github.com/phuhao00/netcore-go/pkg/core"
-	"github.com/phuhao00/netcore-go/pkg/pool"
+	"github.com/netcore-go/pkg/core"
+	"github.com/netcore-go/pkg/pool"
 )
 
 // KCPServer KCP服务器实现
@@ -74,20 +74,19 @@ func NewKCPServer(opts ...core.ServerOption) *KCPServer {
 		kcpConfig:   DefaultKCPConfig(),
 	}
 	
-	// 应用配置选项
-	for _, opt := range opts {
-		opt(&server.BaseServer)
-	}
+	// 创建基础服务器
+	server.BaseServer = *core.NewBaseServer(opts...)
 	
 	// 设置默认配置
-	if server.Config.ReadBufferSize == 0 {
-		server.Config.ReadBufferSize = 4096
+	config := server.BaseServer.GetConfig()
+	if config.ReadBufferSize == 0 {
+		config.ReadBufferSize = 4096
 	}
-	if server.Config.WriteBufferSize == 0 {
-		server.Config.WriteBufferSize = 4096
+	if config.WriteBufferSize == 0 {
+		config.WriteBufferSize = 4096
 	}
-	if server.Config.MaxConnections == 0 {
-		server.Config.MaxConnections = 1000
+	if config.MaxConnections == 0 {
+		config.MaxConnections = 1000
 	}
 	
 	return server
@@ -372,3 +371,4 @@ func (s *KCPServer) GetKCPStats() map[string]interface{} {
 	
 	return stats
 }
+

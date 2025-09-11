@@ -1,4 +1,4 @@
-// Package rpc RPC连接实现
+﻿// Package rpc RPC连接实现
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/phuhao00/netcore-go/pkg/core"
+	"github.com/netcore-go/pkg/core"
 )
 
 // RPCConnection RPC连接实现
@@ -212,3 +212,4 @@ func (c *RPCConnection) LastActive() time.Time {
 func generateConnectionID() string {
 	return fmt.Sprintf("rpc-%d", time.Now().UnixNano())
 }
+

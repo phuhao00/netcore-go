@@ -129,6 +129,11 @@ func (s *BaseServer) GetStats() *ServerStats {
 	return s.stats
 }
 
+// GetConfig 获取服务器配置
+func (s *BaseServer) GetConfig() *ServerConfig {
+	return s.config
+}
+
 // acceptLoop 接受连接循环
 func (s *BaseServer) acceptLoop() {
 	defer s.wg.Done()
@@ -299,9 +304,4 @@ func (s *BaseServer) getConnectionCount() int64 {
 // IsRunning 检查服务器是否正在运行
 func (s *BaseServer) IsRunning() bool {
 	return atomic.LoadInt32(&s.running) == 1
-}
-
-// GetConfig 获取服务器配置
-func (s *BaseServer) GetConfig() *ServerConfig {
-	return s.config
 }

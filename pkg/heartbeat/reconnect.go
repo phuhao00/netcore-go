@@ -1,4 +1,4 @@
-// Package heartbeat 重连管理器实现
+﻿// Package heartbeat 重连管理器实现
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -13,7 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"../core"
+	"github.com/netcore-go/pkg/core"
 )
 
 // ReconnectStrategy 重连策略

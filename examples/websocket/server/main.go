@@ -1,4 +1,4 @@
-// Package main WebSocket服务器示例
+﻿// Package main WebSocket服务器示例
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -13,8 +13,8 @@ import (
 	"syscall"
 	"time"
 
-	netcore "github.com/netcore-go/netcore-go"
-	"github.com/netcore-go/netcore-go/pkg/core"
+	netcore "github.com/netcore-go"
+	"github.com/netcore-go/pkg/core"
 )
 
 // WebSocketEchoHandler WebSocket回声处理器
@@ -116,3 +116,4 @@ func main() {
 		fmt.Println("WebSocket server stopped successfully")
 	}
 }
+

@@ -1,4 +1,4 @@
-// Package main KCP服务器示例
+﻿// Package main KCP服务器示例
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -13,9 +13,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/phuhao00/netcore-go"
-	"github.com/phuhao00/netcore-go/pkg/core"
-	"github.com/phuhao00/netcore-go/pkg/kcp"
+	"github.com/netcore-go"
+	"github.com/netcore-go/pkg/core"
+	"github.com/netcore-go/pkg/kcp"
 )
 
 // GameMessage 游戏消息
@@ -530,3 +530,4 @@ func main() {
 	
 	log.Println("Goodbye!")
 }
+

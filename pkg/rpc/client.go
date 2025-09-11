@@ -1,4 +1,4 @@
-// Package rpc RPC客户端实现
+﻿// Package rpc RPC客户端实现
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/phuhao00/netcore-go/pkg/pool"
+	"github.com/netcore-go/pkg/pool"
 )
 
 // RPCClient RPC客户端
@@ -365,3 +365,6 @@ func (c *RPCConnection) ReadResponse() (*RPCResponse, error) {
 	
 	return &response, nil
 }
+
+
+

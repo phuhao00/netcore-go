@@ -1,4 +1,4 @@
-// Package main HTTP性能测试示例
+﻿// Package main HTTP性能测试示例
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -14,9 +14,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/netcore-go/netcore-go"
-	"github.com/netcore-go/netcore-go/pkg/core"
-	netcorehttp "github.com/netcore-go/netcore-go/pkg/http"
+	"github.com/netcore-go"
+	"github.com/netcore-go/pkg/core"
+	netcorehttp "github.com/netcore-go/pkg/http"
 )
 
 // BenchmarkResult 基准测试结果
@@ -322,3 +322,4 @@ func main() {
 	server.Stop()
 	fmt.Println("Benchmark completed!")
 }
+

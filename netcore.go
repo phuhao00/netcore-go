@@ -1,4 +1,4 @@
-// Package netcore 提供NetCore-Go高性能网络库的统一API接口
+﻿// Package netcore 提供NetCore-Go高性能网络库的统一API接口
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -7,11 +7,11 @@ package netcore
 import (
 	"time"
 
-	"github.com/netcore-go/netcore-go/pkg/core"
-	"github.com/netcore-go/netcore-go/pkg/http"
-	"github.com/netcore-go/netcore-go/pkg/tcp"
-	"github.com/netcore-go/netcore-go/pkg/udp"
-	"github.com/netcore-go/netcore-go/pkg/websocket"
+	"github.com/netcore-go/pkg/core"
+	"github.com/netcore-go/pkg/http"
+	"github.com/netcore-go/pkg/tcp"
+	"github.com/netcore-go/pkg/udp"
+	"github.com/netcore-go/pkg/websocket"
 )
 
 // 导出核心类型和接口
@@ -220,3 +220,4 @@ func MetricsMiddleware() Middleware {
 func RecoveryMiddleware() Middleware {
 	return core.RecoveryMiddleware()
 }
+

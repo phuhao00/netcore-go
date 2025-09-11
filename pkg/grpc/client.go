@@ -12,6 +12,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -161,7 +162,7 @@ func (c *GRPCClient) IsConnected() bool {
 	}
 	
 	state := c.conn.GetState()
-	return state == grpc.Ready || state == grpc.Idle
+	return state == connectivity.Ready || state == connectivity.Idle
 }
 
 // SetMetadata 设置请求元数据
@@ -354,3 +355,7 @@ func CircuitBreakerClientInterceptor(failureThreshold int, resetTimeout time.Dur
 		return err
 	}
 }
+
+
+
+

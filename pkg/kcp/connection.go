@@ -1,4 +1,4 @@
-// Package kcp KCP连接实现
+﻿// Package kcp KCP连接实现
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -13,7 +13,7 @@ import (
 
 	"github.com/xtaci/kcp-go/v5"
 
-	"github.com/phuhao00/netcore-go/pkg/core"
+	"github.com/netcore-go/pkg/core"
 )
 
 // KCPConnection KCP连接实现
@@ -324,3 +324,5 @@ func (c *KCPConnection) IsTimeout(timeout time.Duration) bool {
 func generateConnectionID() string {
 	return fmt.Sprintf("kcp-%d", time.Now().UnixNano())
 }
+
+

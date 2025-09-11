@@ -43,7 +43,7 @@ NetCore-Go 是一个功能丰富、高性能的 Go 语言网络库，提供了�
 ## 📦 安装
 
 ```bash
-go get github.com/netcore-go/netcore-go
+go get github.com/netcore-go
 ```
 
 ## 🚀 快速开始
@@ -493,7 +493,7 @@ go test -bench=BenchmarkRPC
 
 ```bash
 # 克隆仓库
-git clone https://github.com/netcore-go/netcore-go.git
+git clone https://github.com/netcore-go/netcore.git
 cd netcore-go
 
 # 安装依赖
@@ -531,9 +531,9 @@ go run main.go
 
 ## 📞 联系我们
 
-- 项目主页: https://github.com/netcore-go/netcore-go
-- 问题反馈: https://github.com/netcore-go/netcore-go/issues
-- 讨论区: https://github.com/netcore-go/netcore-go/discussions
+- 项目主页: https://github.com/netcore-go/netcore
+- 问题反馈: https://github.com/netcore-go/netcore/issues
+- 讨论区: https://github.com/netcore-go/netcore/discussions
 - 邮箱: netcore-go@example.com
 
 ## 🗺️ 路线图

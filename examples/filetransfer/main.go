@@ -1,4 +1,4 @@
-package main
+﻿package main
 
 import (
 	"crypto/md5"
@@ -14,10 +14,10 @@ import (
 	"sync"
 	"time"
 
-	"../../netcore"
-	"../../pkg/core"
-	"../../pkg/middleware"
-	"../../pkg/pool"
+	"github.com/netcore-go"
+	"github.com/netcore-go/pkg/core"
+	"github.com/netcore-go/pkg/middleware"
+	"github.com/netcore-go/pkg/pool"
 )
 
 // FileTransferMessage 文件传输消息
@@ -944,3 +944,5 @@ func main() {
 		log.Fatalf("启动文件传输服务器失败: %v", err)
 	}
 }
+
+

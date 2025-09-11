@@ -1,4 +1,4 @@
-// Package main WebSocket性能测试示例
+﻿// Package main WebSocket性能测试示例
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	netcore "github.com/netcore-go/netcore-go"
+	netcore "github.com/netcore-go"
 )
 
 // BenchmarkHandler WebSocket性能测试处理器
@@ -195,3 +195,4 @@ func main() {
 	// 保持服务器运行
 	select {}
 }
+

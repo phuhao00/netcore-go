@@ -1263,10 +1263,10 @@ go tool pprof http://localhost:6060/debug/pprof/profile
 
 ## 社区和支持
 
-- **GitHub**: https://github.com/netcore-go/netcore-go
+- **GitHub**: https://github.com/netcore-go/netcore
 - **文档**: https://netcore-go.github.io/docs
-- **问题反馈**: https://github.com/netcore-go/netcore-go/issues
-- **讨论区**: https://github.com/netcore-go/netcore-go/discussions
+- **问题反馈**: https://github.com/netcore-go/netcore/issues
+- **讨论区**: https://github.com/netcore-go/netcore/discussions
 - **邮件列表**: netcore-go@googlegroups.com
 
 ---

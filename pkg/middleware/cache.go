@@ -1,4 +1,4 @@
-// Package middleware 缓存中间件实现
+﻿// Package middleware 缓存中间件实现
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"../core"
+	"github.com/netcore-go/pkg/core"
 )
 
 // CacheEntry 缓存条目
@@ -325,3 +325,4 @@ func (m *CacheMiddleware) ClearCache() error {
 func (m *CacheMiddleware) DeleteCache(key string) error {
 	return m.config.CacheStore.Delete(m.config.KeyPrefix + key)
 }
+

@@ -1,4 +1,4 @@
-// Package middleware 实现NetCore-Go网络库的扩展中间件
+﻿// Package middleware 实现NetCore-Go网络库的扩展中间件
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"../core"
+	"github.com/netcore-go/pkg/core"
 )
 
 // JWTClaims JWT声明
@@ -289,3 +289,4 @@ func (m *JWTMiddleware) GenerateToken(userID, username, role string) (string, er
 
 	return headerEncoded + "." + payloadEncoded + "." + signatureEncoded, nil
 }
+

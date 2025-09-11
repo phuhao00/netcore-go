@@ -1,4 +1,4 @@
-// Package main UDP性能测试示例
+﻿// Package main UDP性能测试示例
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -11,8 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	netcore "github.com/netcore-go/netcore-go"
-	"github.com/netcore-go/netcore-go/pkg/core"
+	netcore "github.com/netcore-go"
+	"github.com/netcore-go/pkg/core"
 )
 
 // BenchmarkHandler UDP性能测试处理器
@@ -241,3 +241,4 @@ func printBenchmarkResult(result *BenchmarkResult) {
 		fmt.Printf("  Error Count: %d\n", result.ServerStats.ErrorCount)
 	}
 }
+

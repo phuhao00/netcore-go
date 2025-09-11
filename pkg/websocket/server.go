@@ -1,4 +1,4 @@
-// Package websocket WebSocket服务器实现
+﻿// Package websocket WebSocket服务器实现
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/netcore-go/netcore-go/pkg/core"
+	"github.com/netcore-go/pkg/core"
 )
 
 const (
@@ -425,3 +425,8 @@ func (s *Server) Broadcast(msg core.Message) {
 		stats.BytesSent += int64(len(msg.Data) * len(connections))
 	})
 }
+
+
+
+
+

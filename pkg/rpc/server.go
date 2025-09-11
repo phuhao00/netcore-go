@@ -1,4 +1,4 @@
-// Package rpc RPC协议服务器实现
+﻿// Package rpc RPC协议服务器实现
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -14,8 +14,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/phuhao00/netcore-go/pkg/core"
-	"github.com/phuhao00/netcore-go/pkg/pool"
+	"github.com/netcore-go/pkg/core"
+	"github.com/netcore-go/pkg/pool"
 )
 
 // RPCServer RPC服务器实现
@@ -374,3 +374,4 @@ func (s *RPCServer) SetHandler(handler core.MessageHandler) {
 func (s *RPCServer) SetMiddleware(middleware ...core.Middleware) {
 	s.Middlewares = middleware
 }
+

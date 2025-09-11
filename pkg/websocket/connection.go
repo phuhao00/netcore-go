@@ -1,4 +1,4 @@
-// Package websocket WebSocket连接实现
+﻿// Package websocket WebSocket连接实现
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/netcore-go/netcore-go/pkg/core"
+	"github.com/netcore-go/pkg/core"
 )
 
 // Connection WebSocket连接
@@ -329,3 +329,4 @@ func (c *Connection) opcodeToMessageType(opcode byte) core.MessageType {
 func generateConnectionID() string {
 	return fmt.Sprintf("ws-%d", time.Now().UnixNano())
 }
+

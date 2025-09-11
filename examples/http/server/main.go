@@ -1,4 +1,4 @@
-// Package main HTTP服务器示例
+﻿// Package main HTTP服务器示例
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -12,9 +12,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/netcore-go/netcore-go"
-	"github.com/netcore-go/netcore-go/pkg/core"
-	"github.com/netcore-go/netcore-go/pkg/http"
+	"github.com/netcore-go"
+	"github.com/netcore-go/pkg/core"
+	"github.com/netcore-go/pkg/http"
 )
 
 // User 用户结构
@@ -318,3 +318,4 @@ func main() {
 	}
 	fmt.Println("HTTP Server stopped")
 }
+

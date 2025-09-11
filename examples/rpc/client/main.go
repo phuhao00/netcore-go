@@ -1,4 +1,4 @@
-// Package main RPC客户端示例
+﻿// Package main RPC客户端示例
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -10,7 +10,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/phuhao00/netcore-go/pkg/rpc"
+	"github.com/netcore-go/pkg/rpc"
 )
 
 // User 用户结构
@@ -266,3 +266,4 @@ func main() {
 	log.Println("\n=== RPC Client Test Completed ===")
 	log.Println("All tests finished successfully!")
 }
+

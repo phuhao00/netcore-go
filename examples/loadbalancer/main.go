@@ -1,4 +1,4 @@
-package main
+﻿package main
 
 import (
 	"context"
@@ -11,11 +11,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"../../netcore"
-	"../../pkg/core"
-	"../../pkg/heartbeat"
-	"../../pkg/middleware"
-	"../../pkg/pool"
+	"github.com/netcore-go"
+	"github.com/netcore-go/pkg/core"
+	"github.com/netcore-go/pkg/heartbeat"
+	"github.com/netcore-go/pkg/middleware"
+	"github.com/netcore-go/pkg/pool"
 )
 
 // LoadBalancingAlgorithm 负载均衡算法
@@ -823,3 +823,5 @@ func main() {
 		log.Fatalf("启动代理服务器失败: %v", err)
 	}
 }
+
+

@@ -16,8 +16,8 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	"github.com/phuhao00/netcore-go/pkg/core"
-	"github.com/phuhao00/netcore-go/pkg/pool"
+	"github.com/netcore-go/pkg/core"
+	"github.com/netcore-go/pkg/pool"
 )
 
 // GRPCServer gRPC服务器实现
@@ -36,20 +36,19 @@ func NewGRPCServer(opts ...core.ServerOption) *GRPCServer {
 		services: make(map[string]interface{}),
 	}
 	
-	// 应用配置选项
-	for _, opt := range opts {
-		opt(&server.BaseServer)
-	}
+	// 创建基础服务器
+	server.BaseServer = *core.NewBaseServer(opts...)
 	
 	// 设置默认配置
-	if server.Config.ReadBufferSize == 0 {
-		server.Config.ReadBufferSize = 4096
+	config := server.BaseServer.GetConfig()
+	if config.ReadBufferSize == 0 {
+		config.ReadBufferSize = 4096
 	}
-	if server.Config.WriteBufferSize == 0 {
-		server.Config.WriteBufferSize = 4096
+	if config.WriteBufferSize == 0 {
+		config.WriteBufferSize = 4096
 	}
-	if server.Config.MaxConnections == 0 {
-		server.Config.MaxConnections = 1000
+	if config.MaxConnections == 0 {
+		config.MaxConnections = 1000
 	}
 	
 	return server
@@ -85,34 +84,35 @@ func (s *GRPCServer) Start(addr string) error {
 		return fmt.Errorf("failed to listen on %s: %v", addr, err)
 	}
 	
-	s.Listener = listener
-	s.Running = true
-	s.Stats.StartTime = time.Now()
+	// 获取配置
+	config := s.BaseServer.GetConfig()
+	stats := s.BaseServer.GetStats()
+	stats.StartTime = time.Now()
 	
 	// 启动连接池
-	if s.Config.EnableConnectionPool {
+	if config.EnableConnectionPool {
 		s.ConnPool = pool.NewConnectionPool(pool.PoolConfig{
 			InitialSize: 10,
-			MaxSize:     s.Config.MaxConnections,
+			MaxSize:     config.MaxConnections,
 			IdleTimeout: 5 * time.Minute,
 		})
 	}
 	
 	// 启动内存池
-	if s.Config.EnableMemoryPool {
-		s.MemPool = pool.NewMemoryPool(s.Config.ReadBufferSize, 100)
+	if config.EnableMemoryPool {
+		// s.MemPool = pool.NewMemoryPool(config.ReadBufferSize, 100)
 	}
 	
 	// 启动协程池
-	if s.Config.EnableGoroutinePool {
-		s.GoroutinePool = pool.NewGoroutinePool(1000, 10000)
+	if config.EnableGoroutinePool {
+		// s.GoroutinePool = pool.NewGoroutinePool(1000, 10000)
 	}
 	
 	// 创建gRPC服务器选项
 	opts := []grpc.ServerOption{
-		grpc.MaxRecvMsgSize(s.Config.ReadBufferSize),
-		grpc.MaxSendMsgSize(s.Config.WriteBufferSize),
-		grpc.MaxConcurrentStreams(uint32(s.Config.MaxConnections)),
+		grpc.MaxRecvMsgSize(config.ReadBufferSize),
+		grpc.MaxSendMsgSize(config.WriteBufferSize),
+		grpc.MaxConcurrentStreams(uint32(config.MaxConnections)),
 	}
 	
 	// 添加拦截器
@@ -304,3 +304,4 @@ func RateLimitInterceptor(maxRequests int, window time.Duration) grpc.UnaryServe
 		return handler(ctx, req)
 	}
 }
+

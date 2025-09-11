@@ -1,4 +1,4 @@
-// Package heartbeat 心跳检测和重连机制实现
+﻿// Package heartbeat 心跳检测和重连机制实现
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"../core"
+	"github.com/netcore-go/pkg/core"
 )
 
 // HeartbeatType 心跳类型
@@ -469,3 +469,4 @@ func (h *HeartbeatMessage) ToJSON() ([]byte, error) {
 func (h *HeartbeatMessage) FromJSON(data []byte) error {
 	return json.Unmarshal(data, h)
 }
+

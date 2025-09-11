@@ -1,4 +1,4 @@
-// Package main KCP客户端示例
+﻿// Package main KCP客户端示例
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/phuhao00/netcore-go/pkg/core"
-	"github.com/phuhao00/netcore-go/pkg/kcp"
+	"github.com/netcore-go/pkg/core"
+	"github.com/netcore-go/pkg/kcp"
 )
 
 // GameMessage 游戏消息
@@ -500,3 +500,4 @@ func main() {
 		log.Printf("Error reading input: %v", err)
 	}
 }
+

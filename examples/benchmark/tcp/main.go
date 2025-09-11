@@ -1,4 +1,4 @@
-// Package main TCP性能测试示例
+﻿// Package main TCP性能测试示例
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -12,8 +12,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/netcore-go/netcore-go"
-	"github.com/netcore-go/netcore-go/pkg/core"
+	"github.com/netcore-go"
+	"github.com/netcore-go/pkg/core"
 )
 
 const (
@@ -132,3 +132,4 @@ func runClient(clientID int, testData []byte) {
 		log.Printf("Client %d: Receive timeout", clientID)
 	}
 }
+

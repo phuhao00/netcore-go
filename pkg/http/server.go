@@ -1,4 +1,4 @@
-// Package http HTTP服务器实现
+﻿// Package http HTTP服务器实现
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -17,8 +17,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/netcore-go/netcore-go/pkg/core"
-	"github.com/netcore-go/netcore-go/pkg/pool"
+	"github.com/netcore-go/pkg/core"
+	"github.com/netcore-go/pkg/pool"
 )
 
 // HTTPServer HTTP服务器实现
@@ -447,3 +447,4 @@ func (s *HTTPServer) checkIdleConnections() {
 		}
 	}
 }
+

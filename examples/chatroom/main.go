@@ -1,4 +1,4 @@
-package main
+﻿package main
 
 import (
 	"context"
@@ -10,11 +10,11 @@ import (
 	"sync"
 	"time"
 
-	"../../netcore"
-	"../../pkg/core"
-	"../../pkg/longpoll"
-	"../../pkg/middleware"
-	"../../pkg/pool"
+	"github.com/netcore-go"
+	"github.com/netcore-go/pkg/core"
+	"github.com/netcore-go/pkg/longpoll"
+	"github.com/netcore-go/pkg/middleware"
+	"github.com/netcore-go/pkg/pool"
 )
 
 // ChatMessage 聊天消息
@@ -848,3 +848,5 @@ func main() {
 		log.Fatalf("启动聊天服务器失败: %v", err)
 	}
 }
+
+

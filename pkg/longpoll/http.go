@@ -1,4 +1,4 @@
-// Package longpoll HTTP长轮询实现
+﻿// Package longpoll HTTP长轮询实现
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"../core"
-	"../http"
+	"github.com/netcore-go/pkg/core"
+	"github.com/netcore-go/pkg/http"
 )
 
 // HTTPLongPollConfig HTTP长轮询配置
@@ -474,3 +474,4 @@ func (m *HTTPLongPollMiddleware) DisableAuth() {
 	m.config.AuthRequired = false
 	m.config.AuthValidator = nil
 }
+

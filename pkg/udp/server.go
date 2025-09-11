@@ -1,4 +1,4 @@
-// Package udp 实现NetCore-Go网络库的UDP服务器
+﻿// Package udp 实现NetCore-Go网络库的UDP服务器
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/netcore-go/netcore-go/pkg/core"
+	"github.com/netcore-go/pkg/core"
 )
 
 // UDPServer UDP服务器实现
@@ -322,3 +322,4 @@ func (s *UDPServer) IsRunning() bool {
 func (s *UDPServer) GetConfig() *core.ServerConfig {
 	return s.config
 }
+
