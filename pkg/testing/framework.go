@@ -1,4 +1,4 @@
-// Package testing 综合测试框架
+// Package testing 提供NetCore-Go的测试框架
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -7,867 +7,662 @@ package testing
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"net/http"
+	"net/http/httptest"
 	"sync"
-	"sync/atomic"
+	"testing"
 	"time"
 
 	"github.com/netcore-go/pkg/core"
 )
 
-// TestType 测试类型
-type TestType string
-
-const (
-	TestTypeUnit        TestType = "unit"
-	TestTypeIntegration TestType = "integration"
-	TestTypeLoad        TestType = "load"
-	TestTypeStress      TestType = "stress"
-	TestTypeChaos       TestType = "chaos"
-	TestTypeE2E         TestType = "e2e"
-	TestTypeSmoke       TestType = "smoke"
-	TestTypeRegression  TestType = "regression"
-)
-
-// TestStatus 测试状态
-type TestStatus string
-
-const (
-	TestStatusPending TestStatus = "pending"
-	TestStatusRunning TestStatus = "running"
-	TestStatusPassed  TestStatus = "passed"
-	TestStatusFailed  TestStatus = "failed"
-	TestStatusSkipped TestStatus = "skipped"
-	TestStatusTimeout TestStatus = "timeout"
-)
-
-// TestFramework 测试框架
-type TestFramework struct {
-	mu       sync.RWMutex
-	config   *TestConfig
-	suites   map[string]*TestSuite
-	running  bool
-	ctx      context.Context
-	cancel   context.CancelFunc
-	stats    *TestStats
-	reporter TestReporter
-	hooks    *TestHooks
+// TestSuite 测试套件接口
+type TestSuite interface {
+	SetUp() error
+	TearDown() error
+	Name() string
 }
 
-// TestConfig 测试配置
-type TestConfig struct {
-	// 基础配置
-	Name            string        `json:"name"`
-	Timeout         time.Duration `json:"timeout"`
-	Parallel        bool          `json:"parallel"`
-	MaxConcurrency  int           `json:"max_concurrency"`
-	RetryCount      int           `json:"retry_count"`
-	RetryDelay      time.Duration `json:"retry_delay"`
-
-	// 过滤配置
-	IncludeTypes    []TestType `json:"include_types"`
-	ExcludeTypes    []TestType `json:"exclude_types"`
-	IncludePatterns []string   `json:"include_patterns"`
-	ExcludePatterns []string   `json:"exclude_patterns"`
-	IncludeTags     []string   `json:"include_tags"`
-	ExcludeTags     []string   `json:"exclude_tags"`
-
-	// 报告配置
-	ReportFormat    string `json:"report_format"`
-	ReportOutput    string `json:"report_output"`
-	Verbose         bool   `json:"verbose"`
-	ShowProgress    bool   `json:"show_progress"`
-
-	// 负载测试配置
-	LoadTestConfig  *LoadTestConfig  `json:"load_test_config"`
-	ChaosTestConfig *ChaosTestConfig `json:"chaos_test_config"`
+// UnitTestSuite 单元测试套件
+type UnitTestSuite struct {
+	name    string
+	logger  *core.Logger
+	cleanup []func() error
 }
 
-// LoadTestConfig 负载测试配置
-type LoadTestConfig struct {
-	Concurrency     int           `json:"concurrency"`
-	Duration        time.Duration `json:"duration"`
-	RampUpTime      time.Duration `json:"ramp_up_time"`
-	RampDownTime    time.Duration `json:"ramp_down_time"`
-	RequestsPerSec  int           `json:"requests_per_sec"`
-	MaxRequests     int64         `json:"max_requests"`
-	ThinkTime       time.Duration `json:"think_time"`
-	Thresholds      *Thresholds   `json:"thresholds"`
-}
-
-// ChaosTestConfig 混沌测试配置
-type ChaosTestConfig struct {
-	Enabled         bool                   `json:"enabled"`
-	FailureRate     float64                `json:"failure_rate"`
-	LatencyInjection *LatencyInjection     `json:"latency_injection"`
-	ErrorInjection  *ErrorInjection        `json:"error_injection"`
-	ResourceChaos   *ResourceChaos         `json:"resource_chaos"`
-	NetworkChaos    *NetworkChaos          `json:"network_chaos"`
-	Experiments     []*ChaosExperiment     `json:"experiments"`
-}
-
-// Thresholds 阈值配置
-type Thresholds struct {
-	MaxResponseTime time.Duration `json:"max_response_time"`
-	MaxErrorRate    float64       `json:"max_error_rate"`
-	MinThroughput   float64       `json:"min_throughput"`
-	MaxCPUUsage     float64       `json:"max_cpu_usage"`
-	MaxMemoryUsage  float64       `json:"max_memory_usage"`
-}
-
-// LatencyInjection 延迟注入
-type LatencyInjection struct {
-	Enabled     bool          `json:"enabled"`
-	Probability float64       `json:"probability"`
-	MinDelay    time.Duration `json:"min_delay"`
-	MaxDelay    time.Duration `json:"max_delay"`
-}
-
-// ErrorInjection 错误注入
-type ErrorInjection struct {
-	Enabled     bool     `json:"enabled"`
-	Probability float64  `json:"probability"`
-	ErrorTypes  []string `json:"error_types"`
-	StatusCodes []int    `json:"status_codes"`
-}
-
-// ResourceChaos 资源混沌
-type ResourceChaos struct {
-	Enabled        bool    `json:"enabled"`
-	CPUStress      bool    `json:"cpu_stress"`
-	MemoryStress   bool    `json:"memory_stress"`
-	DiskStress     bool    `json:"disk_stress"`
-	StressDuration time.Duration `json:"stress_duration"`
-	StressLevel    float64 `json:"stress_level"`
-}
-
-// NetworkChaos 网络混沌
-type NetworkChaos struct {
-	Enabled       bool          `json:"enabled"`
-	PacketLoss    float64       `json:"packet_loss"`
-	Latency       time.Duration `json:"latency"`
-	Jitter        time.Duration `json:"jitter"`
-	BandwidthLimit int64        `json:"bandwidth_limit"`
-	Corruption    float64       `json:"corruption"`
-}
-
-// ChaosExperiment 混沌实验
-type ChaosExperiment struct {
-	Name        string        `json:"name"`
-	Description string        `json:"description"`
-	Duration    time.Duration `json:"duration"`
-	Actions     []ChaosAction `json:"actions"`
-	Schedule    string        `json:"schedule"`
-}
-
-// ChaosAction 混沌动作
-type ChaosAction struct {
-	Type       string                 `json:"type"`
-	Target     string                 `json:"target"`
-	Parameters map[string]interface{} `json:"parameters"`
-	Delay      time.Duration          `json:"delay"`
-}
-
-// TestSuite 测试套件
-type TestSuite struct {
-	Name        string      `json:"name"`
-	Description string      `json:"description"`
-	Type        TestType    `json:"type"`
-	Tags        []string    `json:"tags"`
-	Tests       []*TestCase `json:"tests"`
-	Setup       func() error `json:"-"`
-	Teardown    func() error `json:"-"`
-	Timeout     time.Duration `json:"timeout"`
-	Parallel    bool        `json:"parallel"`
-	Skip        bool        `json:"skip"`
-	SkipReason  string      `json:"skip_reason"`
-}
-
-// TestCase 测试用例
-type TestCase struct {
-	Name        string        `json:"name"`
-	Description string        `json:"description"`
-	Type        TestType      `json:"type"`
-	Tags        []string      `json:"tags"`
-	Timeout     time.Duration `json:"timeout"`
-	RetryCount  int           `json:"retry_count"`
-	Skip        bool          `json:"skip"`
-	SkipReason  string        `json:"skip_reason"`
-	Setup       func() error  `json:"-"`
-	Test        func() error  `json:"-"`
-	Teardown    func() error  `json:"-"`
-	Expected    interface{}   `json:"expected"`
-	Actual      interface{}   `json:"actual"`
-	Status      TestStatus    `json:"status"`
-	Error       string        `json:"error,omitempty"`
-	StartTime   time.Time     `json:"start_time"`
-	EndTime     time.Time     `json:"end_time"`
-	Duration    time.Duration `json:"duration"`
-	Retries     int           `json:"retries"`
-}
-
-// TestStats 测试统计
-type TestStats struct {
-	TotalTests    int64         `json:"total_tests"`
-	PassedTests   int64         `json:"passed_tests"`
-	FailedTests   int64         `json:"failed_tests"`
-	SkippedTests  int64         `json:"skipped_tests"`
-	TimeoutTests  int64         `json:"timeout_tests"`
-	TotalDuration time.Duration `json:"total_duration"`
-	StartTime     time.Time     `json:"start_time"`
-	EndTime       time.Time     `json:"end_time"`
-	SuccessRate   float64       `json:"success_rate"`
-	Coverage      float64       `json:"coverage"`
-}
-
-// TestReporter 测试报告器接口
-type TestReporter interface {
-	ReportStart(stats *TestStats)
-	ReportSuite(suite *TestSuite, stats *TestStats)
-	ReportTest(test *TestCase)
-	ReportEnd(stats *TestStats)
-	GenerateReport() ([]byte, error)
-}
-
-// TestHooks 测试钩子
-type TestHooks struct {
-	BeforeAll   func() error
-	AfterAll    func() error
-	BeforeSuite func(suite *TestSuite) error
-	AfterSuite  func(suite *TestSuite) error
-	BeforeTest  func(test *TestCase) error
-	AfterTest   func(test *TestCase) error
-	OnFailure   func(test *TestCase, err error)
-	OnSuccess   func(test *TestCase)
-}
-
-// DefaultTestConfig 返回默认测试配置
-func DefaultTestConfig() *TestConfig {
-	return &TestConfig{
-		Name:           "NetCore-Go Tests",
-		Timeout:        30 * time.Minute,
-		Parallel:       true,
-		MaxConcurrency: 10,
-		RetryCount:     0,
-		RetryDelay:     1 * time.Second,
-		ReportFormat:   "json",
-		ReportOutput:   "test-results.json",
-		Verbose:        false,
-		ShowProgress:   true,
-		LoadTestConfig: &LoadTestConfig{
-			Concurrency:    10,
-			Duration:       1 * time.Minute,
-			RampUpTime:     10 * time.Second,
-			RampDownTime:   10 * time.Second,
-			RequestsPerSec: 100,
-			Thresholds: &Thresholds{
-				MaxResponseTime: 1 * time.Second,
-				MaxErrorRate:    0.01,
-				MinThroughput:   50,
-				MaxCPUUsage:     0.8,
-				MaxMemoryUsage:  0.8,
-			},
-		},
-		ChaosTestConfig: &ChaosTestConfig{
-			Enabled:     false,
-			FailureRate: 0.1,
-			LatencyInjection: &LatencyInjection{
-				Enabled:     false,
-				Probability: 0.1,
-				MinDelay:    100 * time.Millisecond,
-				MaxDelay:    1 * time.Second,
-			},
-			ErrorInjection: &ErrorInjection{
-				Enabled:     false,
-				Probability: 0.05,
-				ErrorTypes:  []string{"timeout", "connection_error", "server_error"},
-				StatusCodes: []int{500, 502, 503, 504},
-			},
-			ResourceChaos: &ResourceChaos{
-				Enabled:        false,
-				CPUStress:      false,
-				MemoryStress:   false,
-				DiskStress:     false,
-				StressDuration: 30 * time.Second,
-				StressLevel:    0.7,
-			},
-			NetworkChaos: &NetworkChaos{
-				Enabled:        false,
-				PacketLoss:     0.01,
-				Latency:        100 * time.Millisecond,
-				Jitter:         50 * time.Millisecond,
-				BandwidthLimit: 1024 * 1024, // 1MB/s
-				Corruption:     0.001,
-			},
-		},
+// NewUnitTestSuite 创建单元测试套件
+func NewUnitTestSuite(name string) *UnitTestSuite {
+	return &UnitTestSuite{
+		name:    name,
+		logger:  core.NewLogger(core.DefaultLoggerConfig()),
+		cleanup: make([]func() error, 0),
 	}
 }
 
-// NewTestFramework 创建测试框架
-func NewTestFramework(config *TestConfig) *TestFramework {
-	if config == nil {
-		config = DefaultTestConfig()
+// Name 返回测试套件名称
+func (uts *UnitTestSuite) Name() string {
+	return uts.name
+}
+
+// SetUp 设置测试环境
+func (uts *UnitTestSuite) SetUp() error {
+	uts.logger.Info(fmt.Sprintf("Setting up unit test suite: %s", uts.name))
+	return nil
+}
+
+// TearDown 清理测试环境
+func (uts *UnitTestSuite) TearDown() error {
+	uts.logger.Info(fmt.Sprintf("Tearing down unit test suite: %s", uts.name))
+	
+	// 执行清理函数
+	for _, cleanupFunc := range uts.cleanup {
+		if err := cleanupFunc(); err != nil {
+			uts.logger.ErrorWithErr("Cleanup function failed", err)
+		}
 	}
+	
+	return nil
+}
 
-	ctx, cancel := context.WithCancel(context.Background())
+// AddCleanup 添加清理函数
+func (uts *UnitTestSuite) AddCleanup(cleanup func() error) {
+	uts.cleanup = append(uts.cleanup, cleanup)
+}
 
-	return &TestFramework{
-		config:   config,
-		suites:   make(map[string]*TestSuite),
-		ctx:      ctx,
-		cancel:   cancel,
-		stats:    &TestStats{},
-		reporter: NewJSONReporter(config.ReportOutput),
-		hooks:    &TestHooks{},
+// IntegrationTestSuite 集成测试套件
+type IntegrationTestSuite struct {
+	name       string
+	logger     *core.Logger
+	server     *httptest.Server
+	cleanup    []func() error
+	databases  map[string]*MockDatabase
+	caches     map[string]*MockCache
+	services   map[string]interface{}
+}
+
+// NewIntegrationTestSuite 创建集成测试套件
+func NewIntegrationTestSuite(name string) *IntegrationTestSuite {
+	return &IntegrationTestSuite{
+		name:      name,
+		logger:    core.NewLogger(core.DefaultLoggerConfig()),
+		cleanup:   make([]func() error, 0),
+		databases: make(map[string]*MockDatabase),
+		caches:    make(map[string]*MockCache),
+		services:  make(map[string]interface{}),
+	}
+}
+
+// Name 返回测试套件名称
+func (its *IntegrationTestSuite) Name() string {
+	return its.name
+}
+
+// SetUp 设置集成测试环境
+func (its *IntegrationTestSuite) SetUp() error {
+	its.logger.Info(fmt.Sprintf("Setting up integration test suite: %s", its.name))
+	
+	// 启动测试服务器
+	its.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Integration Test Server"))
+	}))
+	
+	its.logger.Info(fmt.Sprintf("Test server started at: %s", its.server.URL))
+	return nil
+}
+
+// TearDown 清理集成测试环境
+func (its *IntegrationTestSuite) TearDown() error {
+	its.logger.Info(fmt.Sprintf("Tearing down integration test suite: %s", its.name))
+	
+	// 关闭测试服务器
+	if its.server != nil {
+		its.server.Close()
+	}
+	
+	// 执行清理函数
+	for _, cleanupFunc := range its.cleanup {
+		if err := cleanupFunc(); err != nil {
+			its.logger.ErrorWithErr("Cleanup function failed", err)
+		}
+	}
+	
+	return nil
+}
+
+// GetServerURL 获取测试服务器URL
+func (its *IntegrationTestSuite) GetServerURL() string {
+	if its.server != nil {
+		return its.server.URL
+	}
+	return ""
+}
+
+// AddMockDatabase 添加模拟数据库
+func (its *IntegrationTestSuite) AddMockDatabase(name string, db *MockDatabase) {
+	its.databases[name] = db
+}
+
+// GetMockDatabase 获取模拟数据库
+func (its *IntegrationTestSuite) GetMockDatabase(name string) *MockDatabase {
+	return its.databases[name]
+}
+
+// AddMockCache 添加模拟缓存
+func (its *IntegrationTestSuite) AddMockCache(name string, cache *MockCache) {
+	its.caches[name] = cache
+}
+
+// GetMockCache 获取模拟缓存
+func (its *IntegrationTestSuite) GetMockCache(name string) *MockCache {
+	return its.caches[name]
+}
+
+// E2ETestSuite 端到端测试套件
+type E2ETestSuite struct {
+	name        string
+	logger      *core.Logger
+	baseURL     string
+	client      *http.Client
+	cleanup     []func() error
+	testData    map[string]interface{}
+	scenarios   []TestScenario
+}
+
+// TestScenario 测试场景
+type TestScenario struct {
+	Name        string
+	Description string
+	Steps       []TestStep
+	Expected    interface{}
+}
+
+// TestStep 测试步骤
+type TestStep struct {
+	Name        string
+	Action      string
+	Parameters  map[string]interface{}
+	Expected    interface{}
+	Validation  func(interface{}) error
+}
+
+// NewE2ETestSuite 创建端到端测试套件
+func NewE2ETestSuite(name, baseURL string) *E2ETestSuite {
+	return &E2ETestSuite{
+		name:     name,
+		logger:   core.NewLogger(core.DefaultLoggerConfig()),
+		baseURL:  baseURL,
+		client:   &http.Client{Timeout: 30 * time.Second},
+		cleanup:  make([]func() error, 0),
+		testData: make(map[string]interface{}),
+		scenarios: make([]TestScenario, 0),
+	}
+}
+
+// Name 返回测试套件名称
+func (e2e *E2ETestSuite) Name() string {
+	return e2e.name
+}
+
+// SetUp 设置端到端测试环境
+func (e2e *E2ETestSuite) SetUp() error {
+	e2e.logger.Info(fmt.Sprintf("Setting up E2E test suite: %s", e2e.name))
+	e2e.logger.Info(fmt.Sprintf("Base URL: %s", e2e.baseURL))
+	
+	// 等待服务启动
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	
+	for {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("timeout waiting for service to start")
+		default:
+			resp, err := e2e.client.Get(e2e.baseURL + "/health")
+			if err == nil && resp.StatusCode == http.StatusOK {
+				resp.Body.Close()
+				e2e.logger.Info("Service is ready for E2E testing")
+				return nil
+			}
+			if resp != nil {
+				resp.Body.Close()
+			}
+			time.Sleep(1 * time.Second)
+		}
+	}
+}
+
+// TearDown 清理端到端测试环境
+func (e2e *E2ETestSuite) TearDown() error {
+	e2e.logger.Info(fmt.Sprintf("Tearing down E2E test suite: %s", e2e.name))
+	
+	// 执行清理函数
+	for _, cleanupFunc := range e2e.cleanup {
+		if err := cleanupFunc(); err != nil {
+			e2e.logger.ErrorWithErr("Cleanup function failed", err)
+		}
+	}
+	
+	return nil
+}
+
+// AddScenario 添加测试场景
+func (e2e *E2ETestSuite) AddScenario(scenario TestScenario) {
+	e2e.scenarios = append(e2e.scenarios, scenario)
+}
+
+// RunScenarios 运行所有测试场景
+func (e2e *E2ETestSuite) RunScenarios(t *testing.T) {
+	for _, scenario := range e2e.scenarios {
+		t.Run(scenario.Name, func(t *testing.T) {
+			e2e.runScenario(t, scenario)
+		})
+	}
+}
+
+// runScenario 运行单个测试场景
+func (e2e *E2ETestSuite) runScenario(t *testing.T, scenario TestScenario) {
+	e2e.logger.Info(fmt.Sprintf("Running scenario: %s", scenario.Name))
+	
+	for i, step := range scenario.Steps {
+		e2e.logger.Info(fmt.Sprintf("Executing step %d: %s", i+1, step.Name))
+		
+		result, err := e2e.executeStep(step)
+		if err != nil {
+			t.Fatalf("Step %d failed: %v", i+1, err)
+		}
+		
+		if step.Validation != nil {
+			if err := step.Validation(result); err != nil {
+				t.Fatalf("Step %d validation failed: %v", i+1, err)
+			}
+		}
+	}
+	
+	e2e.logger.Info(fmt.Sprintf("Scenario completed: %s", scenario.Name))
+}
+
+// executeStep 执行测试步骤
+func (e2e *E2ETestSuite) executeStep(step TestStep) (interface{}, error) {
+	switch step.Action {
+	case "GET":
+		return e2e.executeHTTPGet(step)
+	case "POST":
+		return e2e.executeHTTPPost(step)
+	case "PUT":
+		return e2e.executeHTTPPut(step)
+	case "DELETE":
+		return e2e.executeHTTPDelete(step)
+	case "WAIT":
+		return e2e.executeWait(step)
+	default:
+		return nil, fmt.Errorf("unknown action: %s", step.Action)
+	}
+}
+
+// executeHTTPGet 执行HTTP GET请求
+func (e2e *E2ETestSuite) executeHTTPGet(step TestStep) (interface{}, error) {
+	url := e2e.baseURL + step.Parameters["path"].(string)
+	resp, err := e2e.client.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	
+	return map[string]interface{}{
+		"status_code": resp.StatusCode,
+		"headers":     resp.Header,
+		"response":    resp,
+	}, nil
+}
+
+// executeHTTPPost 执行HTTP POST请求
+func (e2e *E2ETestSuite) executeHTTPPost(step TestStep) (interface{}, error) {
+	// TODO: 实现POST请求逻辑
+	return nil, fmt.Errorf("POST not implemented")
+}
+
+// executeHTTPPut 执行HTTP PUT请求
+func (e2e *E2ETestSuite) executeHTTPPut(step TestStep) (interface{}, error) {
+	// TODO: 实现PUT请求逻辑
+	return nil, fmt.Errorf("PUT not implemented")
+}
+
+// executeHTTPDelete 执行HTTP DELETE请求
+func (e2e *E2ETestSuite) executeHTTPDelete(step TestStep) (interface{}, error) {
+	// TODO: 实现DELETE请求逻辑
+	return nil, fmt.Errorf("DELETE not implemented")
+}
+
+// executeWait 执行等待操作
+func (e2e *E2ETestSuite) executeWait(step TestStep) (interface{}, error) {
+	duration := step.Parameters["duration"].(time.Duration)
+	time.Sleep(duration)
+	return nil, nil
+}
+
+// MockDatabase 模拟数据库
+type MockDatabase struct {
+	mu   sync.RWMutex
+	data map[string]interface{}
+}
+
+// NewMockDatabase 创建模拟数据库
+func NewMockDatabase() *MockDatabase {
+	return &MockDatabase{
+		data: make(map[string]interface{}),
+	}
+}
+
+// Set 设置数据
+func (db *MockDatabase) Set(key string, value interface{}) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	db.data[key] = value
+}
+
+// Get 获取数据
+func (db *MockDatabase) Get(key string) (interface{}, bool) {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+	value, exists := db.data[key]
+	return value, exists
+}
+
+// Delete 删除数据
+func (db *MockDatabase) Delete(key string) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	delete(db.data, key)
+}
+
+// Clear 清空数据
+func (db *MockDatabase) Clear() {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	db.data = make(map[string]interface{})
+}
+
+// MockCache 模拟缓存
+type MockCache struct {
+	mu   sync.RWMutex
+	data map[string]CacheItem
+}
+
+// CacheItem 缓存项
+type CacheItem struct {
+	Value     interface{}
+	ExpiresAt time.Time
+}
+
+// NewMockCache 创建模拟缓存
+func NewMockCache() *MockCache {
+	return &MockCache{
+		data: make(map[string]CacheItem),
+	}
+}
+
+// Set 设置缓存
+func (c *MockCache) Set(key string, value interface{}, ttl time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	
+	item := CacheItem{
+		Value:     value,
+		ExpiresAt: time.Now().Add(ttl),
+	}
+	c.data[key] = item
+}
+
+// Get 获取缓存
+func (c *MockCache) Get(key string) (interface{}, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	
+	item, exists := c.data[key]
+	if !exists {
+		return nil, false
+	}
+	
+	// 检查是否过期
+	if time.Now().After(item.ExpiresAt) {
+		delete(c.data, key)
+		return nil, false
+	}
+	
+	return item.Value, true
+}
+
+// Delete 删除缓存
+func (c *MockCache) Delete(key string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.data, key)
+}
+
+// Clear 清空缓存
+func (c *MockCache) Clear() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.data = make(map[string]CacheItem)
+}
+
+// TestRunner 测试运行器
+type TestRunner struct {
+	suites []TestSuite
+	logger *core.Logger
+}
+
+// NewTestRunner 创建测试运行器
+func NewTestRunner() *TestRunner {
+	return &TestRunner{
+		suites: make([]TestSuite, 0),
+		logger: core.NewLogger(core.DefaultLoggerConfig()),
 	}
 }
 
 // AddSuite 添加测试套件
-func (tf *TestFramework) AddSuite(suite *TestSuite) {
-	tf.mu.Lock()
-	defer tf.mu.Unlock()
-	tf.suites[suite.Name] = suite
+func (tr *TestRunner) AddSuite(suite TestSuite) {
+	tr.suites = append(tr.suites, suite)
 }
 
-// RemoveSuite 移除测试套件
-func (tf *TestFramework) RemoveSuite(name string) {
-	tf.mu.Lock()
-	defer tf.mu.Unlock()
-	delete(tf.suites, name)
-}
-
-// SetReporter 设置报告器
-func (tf *TestFramework) SetReporter(reporter TestReporter) {
-	tf.mu.Lock()
-	defer tf.mu.Unlock()
-	tf.reporter = reporter
-}
-
-// SetHooks 设置钩子
-func (tf *TestFramework) SetHooks(hooks *TestHooks) {
-	tf.mu.Lock()
-	defer tf.mu.Unlock()
-	tf.hooks = hooks
-}
-
-// Run 运行测试
-func (tf *TestFramework) Run() error {
-	tf.mu.Lock()
-	if tf.running {
-		tf.mu.Unlock()
-		return fmt.Errorf("test framework is already running")
-	}
-	tf.running = true
-	tf.mu.Unlock()
-
-	defer func() {
-		tf.mu.Lock()
-		tf.running = false
-		tf.mu.Unlock()
-	}()
-
-	// 初始化统计
-	tf.stats.StartTime = time.Now()
-
-	// 执行BeforeAll钩子
-	if tf.hooks.BeforeAll != nil {
-		if err := tf.hooks.BeforeAll(); err != nil {
-			return fmt.Errorf("BeforeAll hook failed: %w", err)
+// RunAll 运行所有测试套件
+func (tr *TestRunner) RunAll() error {
+	tr.logger.Info("Starting test runner")
+	
+	for _, suite := range tr.suites {
+		tr.logger.Info(fmt.Sprintf("Running test suite: %s", suite.Name()))
+		
+		if err := suite.SetUp(); err != nil {
+			tr.logger.ErrorWithErr(fmt.Sprintf("Failed to set up suite: %s", suite.Name()), err)
+			continue
 		}
-	}
-
-	// 开始报告
-	tf.reporter.ReportStart(tf.stats)
-
-	// 运行测试套件
-	err := tf.runSuites()
-
-	// 完成统计
-	tf.stats.EndTime = time.Now()
-	tf.stats.TotalDuration = tf.stats.EndTime.Sub(tf.stats.StartTime)
-	if tf.stats.TotalTests > 0 {
-		tf.stats.SuccessRate = float64(tf.stats.PassedTests) / float64(tf.stats.TotalTests)
-	}
-
-	// 执行AfterAll钩子
-	if tf.hooks.AfterAll != nil {
-		if hookErr := tf.hooks.AfterAll(); hookErr != nil {
-			fmt.Printf("AfterAll hook failed: %v\n", hookErr)
+		
+		// 这里应该运行实际的测试
+		// 由于这是框架代码，实际测试由具体的测试文件执行
+		
+		if err := suite.TearDown(); err != nil {
+			tr.logger.ErrorWithErr(fmt.Sprintf("Failed to tear down suite: %s", suite.Name()), err)
 		}
+		
+		tr.logger.Info(fmt.Sprintf("Completed test suite: %s", suite.Name()))
 	}
-
-	// 结束报告
-	tf.reporter.ReportEnd(tf.stats)
-
-	return err
-}
-
-// runSuites 运行测试套件
-func (tf *TestFramework) runSuites() error {
-	tf.mu.RLock()
-	suites := make([]*TestSuite, 0, len(tf.suites))
-	for _, suite := range tf.suites {
-		if tf.shouldRunSuite(suite) {
-			suites = append(suites, suite)
-		}
-	}
-	tf.mu.RUnlock()
-
-	if tf.config.Parallel {
-		return tf.runSuitesParallel(suites)
-	} else {
-		return tf.runSuitesSequential(suites)
-	}
-}
-
-// runSuitesSequential 顺序运行测试套件
-func (tf *TestFramework) runSuitesSequential(suites []*TestSuite) error {
-	for _, suite := range suites {
-		if err := tf.runSuite(suite); err != nil {
-			return err
-		}
-	}
+	
+	tr.logger.Info("Test runner completed")
 	return nil
 }
 
-// runSuitesParallel 并行运行测试套件
-func (tf *TestFramework) runSuitesParallel(suites []*TestSuite) error {
-	semaphore := make(chan struct{}, tf.config.MaxConcurrency)
-	errorChan := make(chan error, len(suites))
-	var wg sync.WaitGroup
-
-	for _, suite := range suites {
-		wg.Add(1)
-		go func(s *TestSuite) {
-			defer wg.Done()
-			semaphore <- struct{}{}
-			defer func() { <-semaphore }()
-
-			if err := tf.runSuite(s); err != nil {
-				errorChan <- err
-			}
-		}(suite)
-	}
-
-	wg.Wait()
-	close(errorChan)
-
-	// 收集错误
-	var errors []error
-	for err := range errorChan {
-		errors = append(errors, err)
-	}
-
-	if len(errors) > 0 {
-		return fmt.Errorf("test suite errors: %v", errors)
-	}
-
-	return nil
+// BenchmarkSuite 性能测试套件
+type BenchmarkSuite struct {
+	name      string
+	logger    *core.Logger
+	benchmarks map[string]func(*testing.B)
 }
 
-// runSuite 运行测试套件
-func (tf *TestFramework) runSuite(suite *TestSuite) error {
-	if suite.Skip {
-		fmt.Printf("Skipping suite %s: %s\n", suite.Name, suite.SkipReason)
-		return nil
-	}
-
-	// 执行BeforeSuite钩子
-	if tf.hooks.BeforeSuite != nil {
-		if err := tf.hooks.BeforeSuite(suite); err != nil {
-			return fmt.Errorf("BeforeSuite hook failed for %s: %w", suite.Name, err)
-		}
-	}
-
-	// 执行套件Setup
-	if suite.Setup != nil {
-		if err := suite.Setup(); err != nil {
-			return fmt.Errorf("suite setup failed for %s: %w", suite.Name, err)
-		}
-	}
-
-	// 运行测试用例
-	var err error
-	if suite.Parallel {
-		err = tf.runTestsParallel(suite.Tests)
-	} else {
-		err = tf.runTestsSequential(suite.Tests)
-	}
-
-	// 执行套件Teardown
-	if suite.Teardown != nil {
-		if teardownErr := suite.Teardown(); teardownErr != nil {
-			fmt.Printf("Suite teardown failed for %s: %v\n", suite.Name, teardownErr)
-		}
-	}
-
-	// 执行AfterSuite钩子
-	if tf.hooks.AfterSuite != nil {
-		if hookErr := tf.hooks.AfterSuite(suite); hookErr != nil {
-			fmt.Printf("AfterSuite hook failed for %s: %v\n", suite.Name, hookErr)
-		}
-	}
-
-	// 报告套件结果
-	tf.reporter.ReportSuite(suite, tf.stats)
-
-	return err
-}
-
-// runTestsSequential 顺序运行测试用例
-func (tf *TestFramework) runTestsSequential(tests []*TestCase) error {
-	for _, test := range tests {
-		if tf.shouldRunTest(test) {
-			tf.runTest(test)
-		}
-	}
-	return nil
-}
-
-// runTestsParallel 并行运行测试用例
-func (tf *TestFramework) runTestsParallel(tests []*TestCase) error {
-	semaphore := make(chan struct{}, tf.config.MaxConcurrency)
-	var wg sync.WaitGroup
-
-	for _, test := range tests {
-		if tf.shouldRunTest(test) {
-			wg.Add(1)
-			go func(t *TestCase) {
-				defer wg.Done()
-				semaphore <- struct{}{}
-				defer func() { <-semaphore }()
-				tf.runTest(t)
-			}(test)
-		}
-	}
-
-	wg.Wait()
-	return nil
-}
-
-// runTest 运行单个测试用例
-func (tf *TestFramework) runTest(test *TestCase) {
-	if test.Skip {
-		test.Status = TestStatusSkipped
-		atomic.AddInt64(&tf.stats.SkippedTests, 1)
-		tf.reporter.ReportTest(test)
-		return
-	}
-
-	test.Status = TestStatusRunning
-	test.StartTime = time.Now()
-	atomic.AddInt64(&tf.stats.TotalTests, 1)
-
-	// 执行BeforeTest钩子
-	if tf.hooks.BeforeTest != nil {
-		if err := tf.hooks.BeforeTest(test); err != nil {
-			test.Status = TestStatusFailed
-			test.Error = fmt.Sprintf("BeforeTest hook failed: %v", err)
-			tf.finishTest(test)
-			return
-		}
-	}
-
-	// 执行测试Setup
-	if test.Setup != nil {
-		if err := test.Setup(); err != nil {
-			test.Status = TestStatusFailed
-			test.Error = fmt.Sprintf("Test setup failed: %v", err)
-			tf.finishTest(test)
-			return
-		}
-	}
-
-	// 执行测试（带重试）
-	tf.executeTestWithRetry(test)
-
-	// 执行测试Teardown
-	if test.Teardown != nil {
-		if err := test.Teardown(); err != nil {
-			fmt.Printf("Test teardown failed for %s: %v\n", test.Name, err)
-		}
-	}
-
-	// 执行AfterTest钩子
-	if tf.hooks.AfterTest != nil {
-		if err := tf.hooks.AfterTest(test); err != nil {
-			fmt.Printf("AfterTest hook failed for %s: %v\n", test.Name, err)
-		}
-	}
-
-	tf.finishTest(test)
-}
-
-// executeTestWithRetry 执行测试（带重试）
-func (tf *TestFramework) executeTestWithRetry(test *TestCase) {
-	maxRetries := test.RetryCount
-	if maxRetries == 0 {
-		maxRetries = tf.config.RetryCount
-	}
-
-	for attempt := 0; attempt <= maxRetries; attempt++ {
-		if attempt > 0 {
-			test.Retries++
-			time.Sleep(tf.config.RetryDelay)
-		}
-
-		// 创建超时上下文
-		timeout := test.Timeout
-		if timeout == 0 {
-			timeout = tf.config.Timeout
-		}
-
-		ctx, cancel := context.WithTimeout(tf.ctx, timeout)
-		done := make(chan error, 1)
-
-		// 在goroutine中执行测试
-		go func() {
-			defer func() {
-				if r := recover(); r != nil {
-					done <- fmt.Errorf("test panicked: %v", r)
-				}
-			}()
-			done <- test.Test()
-		}()
-
-		// 等待测试完成或超时
-		select {
-		case err := <-done:
-			cancel()
-			if err == nil {
-				test.Status = TestStatusPassed
-				if tf.hooks.OnSuccess != nil {
-					tf.hooks.OnSuccess(test)
-				}
-				return
-			} else {
-				test.Error = err.Error()
-				if attempt == maxRetries {
-					test.Status = TestStatusFailed
-					if tf.hooks.OnFailure != nil {
-						tf.hooks.OnFailure(test, err)
-					}
-				}
-			}
-		case <-ctx.Done():
-			cancel()
-			test.Status = TestStatusTimeout
-			test.Error = "test timeout"
-			return
-		}
+// NewBenchmarkSuite 创建性能测试套件
+func NewBenchmarkSuite(name string) *BenchmarkSuite {
+	return &BenchmarkSuite{
+		name:       name,
+		logger:     core.NewLogger(core.DefaultLoggerConfig()),
+		benchmarks: make(map[string]func(*testing.B)),
 	}
 }
 
-// finishTest 完成测试
-func (tf *TestFramework) finishTest(test *TestCase) {
-	test.EndTime = time.Now()
-	test.Duration = test.EndTime.Sub(test.StartTime)
-
-	// 更新统计
-	switch test.Status {
-	case TestStatusPassed:
-		atomic.AddInt64(&tf.stats.PassedTests, 1)
-	case TestStatusFailed:
-		atomic.AddInt64(&tf.stats.FailedTests, 1)
-	case TestStatusSkipped:
-		atomic.AddInt64(&tf.stats.SkippedTests, 1)
-	case TestStatusTimeout:
-		atomic.AddInt64(&tf.stats.TimeoutTests, 1)
-	}
-
-	// 报告测试结果
-	tf.reporter.ReportTest(test)
+// AddBenchmark 添加性能测试
+func (bs *BenchmarkSuite) AddBenchmark(name string, benchmark func(*testing.B)) {
+	bs.benchmarks[name] = benchmark
 }
 
-// shouldRunSuite 检查是否应该运行测试套件
-func (tf *TestFramework) shouldRunSuite(suite *TestSuite) bool {
-	// 检查类型过滤
-	if len(tf.config.IncludeTypes) > 0 {
-		found := false
-		for _, includeType := range tf.config.IncludeTypes {
-			if includeType == suite.Type {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
-	}
-
-	for _, excludeType := range tf.config.ExcludeTypes {
-		if excludeType == suite.Type {
-			return false
-		}
-	}
-
-	// 检查标签过滤
-	if len(tf.config.IncludeTags) > 0 {
-		found := false
-		for _, includeTag := range tf.config.IncludeTags {
-			for _, tag := range suite.Tags {
-				if tag == includeTag {
-					found = true
-					break
-				}
-			}
-			if found {
-				break
-			}
-		}
-		if !found {
-			return false
-		}
-	}
-
-	for _, excludeTag := range tf.config.ExcludeTags {
-		for _, tag := range suite.Tags {
-			if tag == excludeTag {
-				return false
-			}
-		}
-	}
-
-	return true
-}
-
-// shouldRunTest 检查是否应该运行测试用例
-func (tf *TestFramework) shouldRunTest(test *TestCase) bool {
-	// 检查类型过滤
-	if len(tf.config.IncludeTypes) > 0 {
-		found := false
-		for _, includeType := range tf.config.IncludeTypes {
-			if includeType == test.Type {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
-	}
-
-	for _, excludeType := range tf.config.ExcludeTypes {
-		if excludeType == test.Type {
-			return false
-		}
-	}
-
-	// 检查标签过滤
-	if len(tf.config.IncludeTags) > 0 {
-		found := false
-		for _, includeTag := range tf.config.IncludeTags {
-			for _, tag := range test.Tags {
-				if tag == includeTag {
-					found = true
-					break
-				}
-			}
-			if found {
-				break
-			}
-		}
-		if !found {
-			return false
-		}
-	}
-
-	for _, excludeTag := range tf.config.ExcludeTags {
-		for _, tag := range test.Tags {
-			if tag == excludeTag {
-				return false
-			}
-		}
-	}
-
-	return true
-}
-
-// GetStats 获取统计信息
-func (tf *TestFramework) GetStats() *TestStats {
-	tf.mu.RLock()
-	defer tf.mu.RUnlock()
-	stats := *tf.stats
-	return &stats
-}
-
-// IsRunning 检查是否运行
-func (tf *TestFramework) IsRunning() bool {
-	tf.mu.RLock()
-	defer tf.mu.RUnlock()
-	return tf.running
-}
-
-// Stop 停止测试框架
-func (tf *TestFramework) Stop() {
-	tf.cancel()
-}
-
-// 混沌工程相关方法
-
-// InjectLatency 注入延迟
-func (tf *TestFramework) InjectLatency(ctx context.Context) {
-	if !tf.config.ChaosTestConfig.Enabled {
-		return
-	}
-
-	latencyConfig := tf.config.ChaosTestConfig.LatencyInjection
-	if !latencyConfig.Enabled {
-		return
-	}
-
-	if rand.Float64() < latencyConfig.Probability {
-		delay := latencyConfig.MinDelay + time.Duration(rand.Int63n(int64(latencyConfig.MaxDelay-latencyConfig.MinDelay)))
-		select {
-		case <-time.After(delay):
-		case <-ctx.Done():
-		}
-	}
-}
-
-// InjectError 注入错误
-func (tf *TestFramework) InjectError() error {
-	if !tf.config.ChaosTestConfig.Enabled {
-		return nil
-	}
-
-	errorConfig := tf.config.ChaosTestConfig.ErrorInjection
-	if !errorConfig.Enabled {
-		return nil
-	}
-
-	if rand.Float64() < errorConfig.Probability {
-		errorTypes := errorConfig.ErrorTypes
-		if len(errorTypes) > 0 {
-			errorType := errorTypes[rand.Intn(len(errorTypes))]
-			return fmt.Errorf("injected error: %s", errorType)
-		}
-	}
-
-	return nil
-}
-
-// ChaosHTTPMiddleware 混沌HTTP中间件
-func (tf *TestFramework) ChaosHTTPMiddleware() func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// 注入延迟
-			tf.InjectLatency(r.Context())
-
-			// 注入错误
-			if err := tf.InjectError(); err != nil {
-				errorConfig := tf.config.ChaosTestConfig.ErrorInjection
-				if len(errorConfig.StatusCodes) > 0 {
-					statusCode := errorConfig.StatusCodes[rand.Intn(len(errorConfig.StatusCodes))]
-					http.Error(w, err.Error(), statusCode)
-					return
-				}
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-			next.ServeHTTP(w, r)
+// RunBenchmarks 运行性能测试
+func (bs *BenchmarkSuite) RunBenchmarks(t *testing.T) {
+	for name, benchmark := range bs.benchmarks {
+		t.Run(name, func(t *testing.T) {
+			result := testing.Benchmark(benchmark)
+			bs.logger.Info(fmt.Sprintf("Benchmark %s: %s", name, result.String()))
 		})
+	}
+}
+
+// LoadTestConfig 负载测试配置
+type LoadTestConfig struct {
+	Concurrency int           `json:"concurrency"`
+	Duration    time.Duration `json:"duration"`
+	RampUp      time.Duration `json:"ramp_up"`
+	TargetURL   string        `json:"target_url"`
+	RequestRate int           `json:"request_rate"`
+}
+
+// LoadTestResult 负载测试结果
+type LoadTestResult struct {
+	TotalRequests    int64         `json:"total_requests"`
+	SuccessfulReqs   int64         `json:"successful_requests"`
+	FailedReqs       int64         `json:"failed_requests"`
+	AverageLatency   time.Duration `json:"average_latency"`
+	MinLatency       time.Duration `json:"min_latency"`
+	MaxLatency       time.Duration `json:"max_latency"`
+	RequestsPerSec   float64       `json:"requests_per_second"`
+	ErrorRate        float64       `json:"error_rate"`
+}
+
+// LoadTester 负载测试器
+type LoadTester struct {
+	config *LoadTestConfig
+	logger *core.Logger
+	client *http.Client
+}
+
+// NewLoadTester 创建负载测试器
+func NewLoadTester(config *LoadTestConfig) *LoadTester {
+	return &LoadTester{
+		config: config,
+		logger: core.NewLogger(core.DefaultLoggerConfig()),
+		client: &http.Client{Timeout: 30 * time.Second},
+	}
+}
+
+// Run 运行负载测试
+func (lt *LoadTester) Run() (*LoadTestResult, error) {
+	lt.logger.Info("Starting load test")
+	lt.logger.Info(fmt.Sprintf("Target: %s, Concurrency: %d, Duration: %s", 
+		lt.config.TargetURL, lt.config.Concurrency, lt.config.Duration))
+	
+	result := &LoadTestResult{}
+	startTime := time.Now()
+	endTime := startTime.Add(lt.config.Duration)
+	
+	// 启动并发请求
+	var wg sync.WaitGroup
+	resultsChan := make(chan RequestResult, lt.config.Concurrency*100)
+	
+	for i := 0; i < lt.config.Concurrency; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			lt.runWorker(endTime, resultsChan)
+		}()
+	}
+	
+	// 等待所有工作协程完成
+	go func() {
+		wg.Wait()
+		close(resultsChan)
+	}()
+	
+	// 收集结果
+	var latencies []time.Duration
+	for reqResult := range resultsChan {
+		result.TotalRequests++
+		if reqResult.Success {
+			result.SuccessfulReqs++
+			latencies = append(latencies, reqResult.Latency)
+		} else {
+			result.FailedReqs++
+		}
+	}
+	
+	// 计算统计信息
+	if len(latencies) > 0 {
+		result.MinLatency = latencies[0]
+		result.MaxLatency = latencies[0]
+		totalLatency := time.Duration(0)
+		
+		for _, latency := range latencies {
+			totalLatency += latency
+			if latency < result.MinLatency {
+				result.MinLatency = latency
+			}
+			if latency > result.MaxLatency {
+				result.MaxLatency = latency
+			}
+		}
+		
+		result.AverageLatency = totalLatency / time.Duration(len(latencies))
+	}
+	
+	totalDuration := time.Since(startTime)
+	result.RequestsPerSec = float64(result.TotalRequests) / totalDuration.Seconds()
+	result.ErrorRate = float64(result.FailedReqs) / float64(result.TotalRequests) * 100
+	
+	lt.logger.Info("Load test completed")
+	lt.logger.Info(fmt.Sprintf("Results: %d total, %d success, %d failed, %.2f req/s, %.2f%% error rate",
+		result.TotalRequests, result.SuccessfulReqs, result.FailedReqs, 
+		result.RequestsPerSec, result.ErrorRate))
+	
+	return result, nil
+}
+
+// RequestResult 请求结果
+type RequestResult struct {
+	Success bool
+	Latency time.Duration
+	Error   error
+}
+
+// runWorker 运行工作协程
+func (lt *LoadTester) runWorker(endTime time.Time, results chan<- RequestResult) {
+	for time.Now().Before(endTime) {
+		startTime := time.Now()
+		
+		resp, err := lt.client.Get(lt.config.TargetURL)
+		latency := time.Since(startTime)
+		
+		result := RequestResult{
+			Latency: latency,
+		}
+		
+		if err != nil {
+			result.Success = false
+			result.Error = err
+		} else {
+			resp.Body.Close()
+			result.Success = resp.StatusCode >= 200 && resp.StatusCode < 300
+		}
+		
+		results <- result
+		
+		// 控制请求速率
+		if lt.config.RequestRate > 0 {
+			time.Sleep(time.Second / time.Duration(lt.config.RequestRate))
+		}
 	}
 }

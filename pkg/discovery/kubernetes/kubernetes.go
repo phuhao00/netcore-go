@@ -11,30 +11,88 @@ import (
 	"sync"
 	"time"
 
-	// TODO: Uncomment when k8s dependencies are available
-	// corev1 "k8s.io/api/core/v1"
-	// metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	// "k8s.io/apimachinery/pkg/fields"
-	// "k8s.io/apimachinery/pkg/watch"
-	// "k8s.io/client-go/kubernetes"
-	// "k8s.io/client-go/rest"
-	// "k8s.io/client-go/tools/clientcmd"
-
 	"github.com/netcore-go/pkg/discovery"
 )
 
+// Mock Kubernetes types for when k8s dependencies are not available
+type MockKubernetesInterface interface {
+	GetServices(namespace string) ([]*MockService, error)
+	WatchServices(namespace string) (MockWatcher, error)
+}
+
+type MockService struct {
+	Name      string
+	Namespace string
+	ClusterIP string
+	Ports     []MockServicePort
+	Labels    map[string]string
+}
+
+type MockServicePort struct {
+	Name     string
+	Port     int32
+	Protocol string
+}
+
+type MockWatcher interface {
+	ResultChan() <-chan MockWatchEvent
+	Stop()
+}
+
+type MockWatchEvent struct {
+	Type   string
+	Object *MockService
+}
+
+type mockKubernetesClient struct{}
+
+func (m *mockKubernetesClient) GetServices(namespace string) ([]*MockService, error) {
+	// Return mock services for demonstration
+	return []*MockService{
+		{
+			Name:      "example-service",
+			Namespace: namespace,
+			ClusterIP: "10.0.0.1",
+			Ports: []MockServicePort{
+				{Name: "http", Port: 80, Protocol: "TCP"},
+			},
+			Labels: map[string]string{"app": "example"},
+		},
+	}, nil
+}
+
+func (m *mockKubernetesClient) WatchServices(namespace string) (MockWatcher, error) {
+	return &mockWatcher{}, nil
+}
+
+type mockWatcher struct {
+	ch chan MockWatchEvent
+}
+
+func (w *mockWatcher) ResultChan() <-chan MockWatchEvent {
+	if w.ch == nil {
+		w.ch = make(chan MockWatchEvent)
+	}
+	return w.ch
+}
+
+func (w *mockWatcher) Stop() {
+	if w.ch != nil {
+		close(w.ch)
+	}
+}
+
 // KubernetesDiscovery Kubernetes服务发现
-// TODO: Uncomment when k8s dependencies are available
 type KubernetesDiscovery struct {
 	mu        sync.RWMutex
-	// client    kubernetes.Interface
+	client    MockKubernetesInterface
 	config    *KubernetesConfig
 	services  map[string]*discovery.ServiceInfo
 	running   bool
 	ctx       context.Context
 	cancel    context.CancelFunc
 	stats     *KubernetesStats
-	// watchers  map[string]watch.Interface
+	watchers  map[string]MockWatcher
 }
 
 // KubernetesConfig Kubernetes配置
@@ -110,73 +168,34 @@ func DefaultKubernetesConfig() *KubernetesConfig {
 }
 
 // NewKubernetesDiscovery 创建Kubernetes服务发现
-// TODO: Uncomment when k8s dependencies are available
 func NewKubernetesDiscovery(config *KubernetesConfig) (*KubernetesDiscovery, error) {
 	if config == nil {
 		config = DefaultKubernetesConfig()
 	}
 
-	// TODO: 创建Kubernetes客户端
-	// client, err := createKubernetesClient(config)
-	// if err != nil {
-	//	return nil, fmt.Errorf("failed to create Kubernetes client: %w", err)
-	// }
+	// 创建Kubernetes客户端 (使用mock实现)
+	client := &mockKubernetesClient{}
 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &KubernetesDiscovery{
-		// client:   client,
+		client:   client,
 		config:   config,
 		services: make(map[string]*discovery.ServiceInfo),
 		ctx:      ctx,
 		cancel:   cancel,
 		stats:    &KubernetesStats{},
-		// watchers: make(map[string]watch.Interface),
+		watchers: make(map[string]MockWatcher),
 	}, nil
 }
 
-// createKubernetesClient 创建Kubernetes客户端
-// TODO: Uncomment when k8s dependencies are available
-/*
-func createKubernetesClient(config *KubernetesConfig) (kubernetes.Interface, error) {
-	var kubeConfig *rest.Config
-	var err error
-
-	if config.InCluster {
-		// 集群内配置
-		kubeConfig, err = rest.InClusterConfig()
-		if err != nil {
-			return nil, fmt.Errorf("failed to create in-cluster config: %w", err)
-		}
-	} else {
-		// 外部配置
-		if config.KubeConfig != "" {
-			kubeConfig, err = clientcmd.BuildConfigFromFlags(config.MasterURL, config.KubeConfig)
-		} else {
-			kubeConfig, err = clientcmd.BuildConfigFromFlags(config.MasterURL, "")
-		}
-		if err != nil {
-			return nil, fmt.Errorf("failed to create kubeconfig: %w", err)
-		}
-	}
-
-	// 设置认证
-	if config.BearerToken != "" {
-		kubeConfig.BearerToken = config.BearerToken
-	}
-	if config.BearerTokenFile != "" {
-		kubeConfig.BearerTokenFile = config.BearerTokenFile
-	}
-
-	// 创建客户端
-	client, err := kubernetes.NewForConfig(kubeConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Kubernetes client: %w", err)
-	}
-
-	return client, nil
+// createKubernetesClient 创建Kubernetes客户端 (Mock实现)
+// 注意: 这是一个mock实现，用于演示目的
+// 在生产环境中，应该使用真实的Kubernetes client-go库
+func createKubernetesClient(config *KubernetesConfig) (MockKubernetesInterface, error) {
+	// 返回mock客户端
+	return &mockKubernetesClient{}, nil
 }
-*/
 
 // Start 启动Kubernetes服务发现
 func (k *KubernetesDiscovery) Start() error {
