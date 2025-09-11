@@ -1,0 +1,77 @@
+# NetCore-Go Helm Chart
+# Author: NetCore-Go Team
+# Created: 2024
+
+apiVersion: v2
+name: netcore-go
+description: A Helm chart for NetCore-Go high-performance network server
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - netcore-go
+  - network-server
+  - high-performance
+  - golang
+  - microservices
+  - cloud-native
+
+home: https://github.com/netcore-go/netcore-go
+sources:
+  - https://github.com/netcore-go/netcore-go
+
+maintainers:
+  - name: NetCore-Go Team
+    email: team@netcore-go.dev
+    url: https://netcore-go.dev
+
+icon: https://netcore-go.dev/assets/logo.png
+
+annotations:
+  category: Infrastructure
+  licenses: MIT
+  images: |
+    - name: netcore-go-server
+      image: netcore-go/server:1.0.0
+  artifacthub.io/changes: |
+    - kind: added
+      description: Initial release of NetCore-Go Helm chart
+    - kind: added
+      description: Support for HTTP/2 and HTTP/3 protocols
+    - kind: added
+      description: Enhanced service discovery integration
+    - kind: added
+      description: Cloud-native deployment features
+  artifacthub.io/containsSecurityUpdates: "false"
+  artifacthub.io/prerelease: "false"
+  artifacthub.io/recommendations: |
+    - url: https://artifacthub.io/packages/helm/prometheus-community/prometheus
+    - url: https://artifacthub.io/packages/helm/grafana/grafana
+    - url: https://artifacthub.io/packages/helm/jaegertracing/jaeger
+
+dependencies:
+  - name: postgresql
+    version: "12.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+    tags:
+      - database
+  - name: redis
+    version: "17.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+    tags:
+      - cache
+  - name: prometheus
+    version: "23.x.x"
+    repository: https://prometheus-community.github.io/helm-charts
+    condition: monitoring.prometheus.enabled
+    tags:
+      - monitoring
+  - name: grafana
+    version: "6.x.x"
+    repository: https://grafana.github.io/helm-charts
+    condition: monitoring.grafana.enabled
+    tags:
+      - monitoring

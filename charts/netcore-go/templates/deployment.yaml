@@ -1,0 +1,158 @@
+{{/*
+NetCore-Go Deployment Template
+Author: NetCore-Go Team
+Created: 2024
+*/}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "netcore-go.fullname" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "netcore-go.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  strategy:
+    {{- toYaml .Values.strategy | nindent 4 }}
+  selector:
+    matchLabels:
+      {{- include "netcore-go.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "netcore-go.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "netcore-go.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: {{ .Chart.Name }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
+        image: {{ include "netcore-go.image" . }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.config.server.port }}
+          protocol: TCP
+        - name: https
+          containerPort: {{ .Values.config.server.https_port }}
+          protocol: TCP
+        - name: grpc
+          containerPort: {{ .Values.config.server.grpc_port }}
+          protocol: TCP
+        - name: metrics
+          containerPort: {{ .Values.config.metrics.port }}
+          protocol: TCP
+        - name: health
+          containerPort: {{ .Values.config.health.port }}
+          protocol: TCP
+        env:
+        {{- range $key, $value := .Values.env }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        envFrom:
+        - configMapRef:
+            name: {{ include "netcore-go.fullname" . }}-config
+        - secretRef:
+            name: {{ include "netcore-go.fullname" . }}-secrets
+        {{- if .Values.livenessProbe }}
+        livenessProbe:
+          {{- toYaml .Values.livenessProbe | nindent 12 }}
+        {{- end }}
+        {{- if .Values.readinessProbe }}
+        readinessProbe:
+          {{- toYaml .Values.readinessProbe | nindent 12 }}
+        {{- end }}
+        {{- if .Values.startupProbe }}
+        startupProbe:
+          {{- toYaml .Values.startupProbe | nindent 12 }}
+        {{- end }}
+        resources:
+          {{- toYaml .Values.resources | nindent 12 }}
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/netcore-go
+          readOnly: true
+        {{- if .Values.tls.enabled }}
+        - name: tls-certs
+          mountPath: /etc/ssl/certs/netcore-go
+          readOnly: true
+        {{- end }}
+        - name: logs
+          mountPath: /var/log/netcore-go
+        - name: tmp
+          mountPath: /tmp
+        {{- if .Values.persistence.enabled }}
+        - name: data
+          mountPath: {{ .Values.persistence.mountPath }}
+        {{- end }}
+      volumes:
+      - name: config-volume
+        configMap:
+          name: {{ include "netcore-go.fullname" . }}-config
+          defaultMode: 0644
+      {{- if .Values.tls.enabled }}
+      - name: tls-certs
+        secret:
+          secretName: {{ .Values.tls.secretName | default (printf "%s-tls" (include "netcore-go.fullname" .)) }}
+          defaultMode: 0600
+      {{- end }}
+      - name: logs
+        emptyDir:
+          sizeLimit: 1Gi
+      - name: tmp
+        emptyDir:
+          sizeLimit: 100Mi
+      {{- if .Values.persistence.enabled }}
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ include "netcore-go.fullname" . }}-data
+      {{- end }}
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{-

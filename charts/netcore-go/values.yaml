@@ -1,0 +1,508 @@
+# NetCore-Go Helm Chart Values
+# Author: NetCore-Go Team
+# Created: 2024
+
+# Global configuration
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: ""
+  postgresql:
+    auth:
+      postgresPassword: "postgres"
+      username: "netcore"
+      password: "netcore123"
+      database: "netcore_go"
+  redis:
+    auth:
+      enabled: true
+      password: "redis123"
+
+# Image configuration
+image:
+  registry: docker.io
+  repository: netcore-go/server
+  tag: "1.0.0"
+  digest: ""
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+# Deployment configuration
+replicaCount: 3
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 1
+
+# Pod configuration
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9090"
+  prometheus.io/path: "/metrics"
+
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+    - ALL
+
+# Service configuration
+service:
+  type: LoadBalancer
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: tcp
+  ports:
+    http:
+      port: 80
+      targetPort: 8080
+      protocol: TCP
+    https:
+      port: 443
+      targetPort: 8443
+      protocol: TCP
+    grpc:
+      port: 9000
+      targetPort: 9000
+      protocol: TCP
+  sessionAffinity: None
+  externalTrafficPolicy: Cluster
+
+# Headless service for service discovery
+headlessService:
+  enabled: true
+  ports:
+    http:
+      port: 8080
+      targetPort: 8080
+    https:
+      port: 8443
+      targetPort: 8443
+    grpc:
+      port: 9000
+      targetPort: 9000
+    metrics:
+      port: 9090
+      targetPort: 9090
+
+# Ingress configuration
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: netcore-go.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+    # - secretName: netcore-go-tls
+    #   hosts:
+    #     - netcore-go.local
+
+# Resource configuration
+resources:
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"
+
+# Horizontal Pod Autoscaler
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+
+# Vertical Pod Autoscaler
+vpa:
+  enabled: false
+  updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+    - containerName: netcore-go-server
+      maxAllowed:
+        cpu: 1
+        memory: 1Gi
+      minAllowed:
+        cpu: 100m
+        memory: 128Mi
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+  # maxUnavailable: 1
+
+# Node selection
+nodeSelector: {}
+
+tolerations: []
+  # - key: "node.kubernetes.io/not-ready"
+  #   operator: "Exists"
+  #   effect: "NoExecute"
+  #   tolerationSeconds: 300
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: app.kubernetes.io/name
+            operator: In
+            values:
+            - netcore-go
+        topologyKey: kubernetes.io/hostname
+
+# Health checks
+livenessProbe:
+  httpGet:
+    path: /health/live
+    port: health
+    scheme: HTTP
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health/ready
+    port: health
+    scheme: HTTP
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  successThreshold: 1
+  failureThreshold: 3
+
+startupProbe:
+  httpGet:
+    path: /health/startup
+    port: health
+    scheme: HTTP
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  successThreshold: 1
+  failureThreshold: 30
+
+# Environment variables
+env:
+  SERVER_HOST: "0.0.0.0"
+  SERVER_PORT: "8080"
+  SERVER_HTTPS_PORT: "8443"
+  GRPC_PORT: "9000"
+  METRICS_PORT: "9090"
+  HEALTH_PORT: "8081"
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"
+  ENVIRONMENT: "production"
+
+# Configuration
+config:
+  server:
+    host: "0.0.0.0"
+    port: 8080
+    https_port: 8443
+    grpc_port: 9000
+    read_timeout: "30s"
+    write_timeout: "30s"
+    idle_timeout: "120s"
+    max_header_bytes: 1048576
+  
+  tls:
+    enabled: true
+    cert_file: "/etc/ssl/certs/netcore-go/tls.crt"
+    key_file: "/etc/ssl/certs/netcore-go/tls.key"
+    min_version: "1.2"
+    max_version: "1.3"
+  
+  logging:
+    level: "info"
+    format: "json"
+    output: "stdout"
+    file: "/var/log/netcore-go/server.log"
+    max_size: 100
+    max_backups: 3
+    max_age: 7
+    compress: true
+  
+  metrics:
+    enabled: true
+    port: 9090
+    path: "/metrics"
+    namespace: "netcore_go"
+  
+  health:
+    enabled: true
+    port: 8081
+    path: "/health"
+  
+  discovery:
+    type: "kubernetes"
+    namespace: "netcore-go"
+    label_selector: "app.kubernetes.io/name=netcore-go"
+  
+  middleware:
+    cors:
+      enabled: true
+      allowed_origins: ["*"]
+      allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+      allowed_headers: ["*"]
+      max_age: 86400
+    
+    rate_limit:
+      enabled: true
+      requests_per_second: 100
+      burst: 200
+    
+    compression:
+      enabled: true
+      level: 6
+      types: ["text/html", "text/css", "text/javascript", "application/json"]
+
+# Secrets
+secrets:
+  jwt_secret: "netcore-go-jwt-secret"
+  database_password: "password"
+  redis_password: "redispassword"
+  api_key: "apikey123456"
+
+# TLS certificates
+tls:
+  enabled: true
+  secretName: "netcore-go-tls"
+  # If you want to generate self-signed certificates
+  selfSigned: true
+  # Or provide your own certificates
+  crt: ""
+  key: ""
+
+# Persistence
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  annotations: {}
+  mountPath: /app/data
+
+# Service Account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+  automountServiceAccountToken: true
+
+# RBAC
+rbac:
+  create: true
+  rules:
+  - apiGroups: [""]
+    resources: ["services", "endpoints", "pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list", "watch"]
+
+# Network Policy
+networkPolicy:
+  enabled: false
+  ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            name: ingress-nginx
+      ports:
+      - protocol: TCP
+        port: 8080
+      - protocol: TCP
+        port: 8443
+  egress:
+    - to: []
+      ports:
+      - protocol: TCP
+        port: 53
+      - protocol: UDP
+        port: 53
+    - to:
+      - namespaceSelector:
+          matchLabels:
+            name: kube-system
+
+# Pod Security Policy
+podSecurityPolicy:
+  enabled: false
+  name: ""
+
+# Monitoring
+monitoring:
+  enabled: true
+  
+  # Prometheus
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      namespace: ""
+      interval: 30s
+      scrapeTimeout: 10s
+      labels: {}
+      annotations: {}
+    
+    prometheusRule:
+      enabled: true
+      namespace: ""
+      labels: {}
+      annotations: {}
+      rules:
+      - alert: NetCoreGoHighErrorRate
+        expr: rate(netcore_go_http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is above 10% for 5 minutes"
+      
+      - alert: NetCoreGoHighLatency
+        expr: histogram_quantile(0.95, rate(netcore_go_http_request_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High latency detected"
+          description: "95th percentile latency is above 1 second"
+  
+  # Grafana
+  grafana:
+    enabled: false
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+
+# Tracing
+tracing:
+  enabled: false
+  jaeger:
+    enabled: false
+    agent:
+      host: jaeger-agent
+      port: 6831
+  zipkin:
+    enabled: false
+    endpoint: http://zipkin:9411/api/v2/spans
+
+# Database dependencies
+postgresql:
+  enabled: false
+  auth:
+    postgresPassword: "postgres"
+    username: "netcore"
+    password: "netcore123"
+    database: "netcore_go"
+  primary:
+    persistence:
+      enabled: true
+      size: 8Gi
+
+redis:
+  enabled: false
+  auth:
+    enabled: true
+    password: "redis123"
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+
+# External services
+externalDatabase:
+  enabled: false
+  type: postgresql
+  host: ""
+  port: 5432
+  username: ""
+  password: ""
+  database: ""
+  sslMode: require
+
+externalRedis:
+  enabled: false
+  host: ""
+  port: 6379
+  password: ""
+  database: 0
+
+# Testing
+testing:
+  enabled: false
+  image:
+    repository: netcore-go/test
+    tag: "1.0.0"
+    pullPolicy: IfNotPresent
+
+# Migration jobs
+migration:
+  enabled: false
+  image:
+    repository: netcore-go/migration
+    tag: "1.0.0"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "50m"
+    limits:
+      memory: "128Mi"
+      cpu: "100m"
+
+# Backup
+backup:
+  enabled: false
+  schedule: "0 2 * * *"
+  retention: 7
+  storage:
+    type: s3
+    bucket: ""
+    region: ""
+    accessKey: ""
+    secretKey: ""
