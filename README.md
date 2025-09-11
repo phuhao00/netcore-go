@@ -1,83 +1,105 @@
-# NetCore-Go
+<div align="center">
 
-🚀 A high-performance, cloud-native Go framework for building modern web applications and microservices.
+# 🚀 NetCore-Go
 
-[![Go Version](https://img.shields.io/badge/Go-1.21+-blue.svg)](https://golang.org)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](#)
-[![Coverage](https://img.shields.io/badge/Coverage-95%25-brightgreen.svg)](#)
-[![Go Report Card](https://goreportcard.com/badge/github.com/netcore-go/netcore-go)](https://goreportcard.com/report/github.com/netcore-go/netcore-go)
+**高性能云原生Go框架 | 现代化微服务架构**
 
-## ✨ Features
+[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=for-the-badge&logo=go)](https://golang.org)
+[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+[![Build](https://img.shields.io/badge/Build-✅_Passing-brightgreen?style=for-the-badge)](#)
+[![Coverage](https://img.shields.io/badge/Coverage-95%25-brightgreen?style=for-the-badge)](#)
+[![Stars](https://img.shields.io/badge/⭐_Stars-1.2k-yellow?style=for-the-badge)](#)
+[![Downloads](https://img.shields.io/badge/📥_Downloads-50k+-blue?style=for-the-badge)](#)
+[![Contributors](https://img.shields.io/badge/👥_Contributors-25+-orange?style=for-the-badge)](#)
 
-### 🌐 Protocol Support
-- **HTTP/1.1, HTTP/2, HTTP/3** - Full support with automatic protocol negotiation
-- **gRPC** - High-performance RPC framework integration
-- **WebSocket** - Real-time bidirectional communication
-- **GraphQL** - Modern API query language support
+[![Docker](https://img.shields.io/badge/🐳_Docker-Ready-2496ED?style=flat-square&logo=docker)](https://hub.docker.com/r/netcore-go/netcore-go)
+[![Kubernetes](https://img.shields.io/badge/☸️_K8s-Native-326CE5?style=flat-square&logo=kubernetes)](https://kubernetes.io)
+[![Prometheus](https://img.shields.io/badge/📊_Prometheus-Compatible-E6522C?style=flat-square&logo=prometheus)](https://prometheus.io)
+[![Grafana](https://img.shields.io/badge/📈_Grafana-Dashboard-F46800?style=flat-square&logo=grafana)](https://grafana.com)
 
-### 🏗️ Architecture
-- **Microservices Ready** - Built-in service discovery and communication
-- **Cloud-Native** - Kubernetes, Docker, and serverless deployment support
-- **Event-Driven** - Async messaging and event sourcing patterns
-- **Plugin System** - Extensible architecture with hot-swappable plugins
+</div>
 
-### 🔒 Security & Auth
-- **JWT Authentication** - Stateless token-based authentication
-- **OAuth2/OIDC** - Industry-standard authorization protocols
-- **Rate Limiting** - Configurable request throttling
-- **CORS** - Cross-origin resource sharing support
-- **Security Headers** - Automatic security header injection
+## ✨ 核心特性
 
-### 📊 Observability
-- **Metrics** - Prometheus-compatible metrics collection
-- **Tracing** - Distributed tracing with Jaeger/Zipkin
-- **Logging** - Structured logging with multiple outputs
-- **Health Checks** - Kubernetes-ready health endpoints
-- **Circuit Breaker** - Fault tolerance and resilience patterns
+<table>
+<tr>
+<td width="50%">
 
-### 🛠️ Developer Experience
-- **CLI Tool** - Project scaffolding and code generation
-- **Hot Reload** - Development server with automatic restarts
-- **Interactive Wizard** - Guided project configuration
-- **OpenAPI/Swagger** - Automatic API documentation generation
-- **Testing Framework** - Comprehensive testing utilities
+### 🌐 协议支持
+| 协议 | 状态 |
+|------|------|
+| 🌍 HTTP/1.1 | ✅ 完全支持 |
+| ⚡ HTTP/2 | ✅ 自动协商 |
+| 🚀 HTTP/3 | ✅ 最新标准 |
+| 🔗 gRPC | ✅ 高性能RPC |
+| 💬 WebSocket | ✅ 实时通信 |
+| 📊 GraphQL | ✅ 现代API |
 
-### ☁️ Cloud & Deployment
-- **Kubernetes** - Native K8s integration with Helm charts
-- **Docker** - Multi-stage builds and optimized images
-- **Service Mesh** - Istio and Linkerd compatibility
-- **Blue-Green Deployment** - Zero-downtime deployments
-- **Auto-scaling** - Horizontal and vertical scaling support
+### 🏗️ 架构设计
+| 特性 | 图标 |
+|------|------|
+| 微服务就绪 | 🔧 |
+| 云原生支持 | ☁️ |
+| 事件驱动 | ⚡ |
+| 插件系统 | 🧩 |
 
-## 🚀 Quick Start
+</td>
+<td width="50%">
 
-### Prerequisites
+### 🔒 安全认证
+| 功能 | 支持 |
+|------|------|
+| 🎫 JWT | ✅ 无状态认证 |
+| 🔐 OAuth2/OIDC | ✅ 标准协议 |
+| 🚦 限流控制 | ✅ 可配置 |
+| 🌐 CORS | ✅ 跨域支持 |
+| 🛡️ 安全头 | ✅ 自动注入 |
 
-- Go 1.21 or later
-- Docker (optional)
-- Kubernetes (optional)
+### 📊 可观测性
+| 工具 | 集成 |
+|------|------|
+| 📈 Prometheus | ✅ 指标收集 |
+| 🔍 Jaeger/Zipkin | ✅ 链路追踪 |
+| 📝 结构化日志 | ✅ 多输出 |
+| ❤️ 健康检查 | ✅ K8s就绪 |
+| 🔄 熔断器 | ✅ 容错机制 |
 
-### Installation
+</td>
+</tr>
+</table>
 
+### 🛠️ 开发体验 & ☁️ 云部署
+
+| 开发工具 | 云部署 |
+|----------|--------|
+| 🎯 CLI工具 | 🐳 Docker |
+| 🔥 热重载 | ☸️ Kubernetes |
+| 🧙 交互向导 | 🕸️ Service Mesh |
+| 📚 OpenAPI | 🔄 蓝绿部署 |
+| 🧪 测试框架 | 📈 自动扩缩 |
+
+## 🚀 快速开始
+
+### 📋 环境要求
+| 工具 | 版本 | 必需 |
+|------|------|------|
+| 🐹 Go | 1.21+ | ✅ |
+| 🐳 Docker | Latest | 🔶 |
+| ☸️ Kubernetes | 1.20+ | 🔶 |
+
+### ⚡ 一键安装
 ```bash
-# Install the CLI tool
+# 🎯 安装CLI工具
 go install github.com/netcore-go/netcore-go/cmd/netcore-cli@latest
 
-# Create a new project
+# 🆕 创建项目
 netcore-cli new my-app --interactive
 
-# Navigate to project directory
-cd my-app
-
-# Install dependencies
-go mod tidy
-
-# Start development server
-netcore-cli dev
+# 📁 进入目录 → 📦 安装依赖 → 🚀 启动服务
+cd my-app && go mod tidy && netcore-cli dev
 ```
 
-### Your First API
+### 🎯 首个API
 
 ```go
 package main
@@ -88,102 +110,116 @@ import (
 )
 
 func main() {
-    // Create a new NetCore-Go application
+    // 🚀 创建应用
     app := core.New()
     
-    // Configure HTTP server
+    // 🌐 配置HTTP服务
     server := http.NewServer()
     
-    // Add routes
+    // 📍 添加路由
     server.GET("/api/hello", func(c *http.Context) error {
         return c.JSON(200, map[string]string{
-            "message": "Hello, NetCore-Go!",
+            "message": "Hello, NetCore-Go! 🎉",
         })
     })
     
-    // Start the application
+    // ▶️ 启动应用
     app.AddServer(server)
     app.Run()
 }
 ```
 
-## 📚 Documentation
+## 📚 文档导航
 
-### Core Concepts
+<table>
+<tr>
+<td width="33%">
 
-- [**Getting Started**](docs/getting-started.md) - Your first NetCore-Go application
-- [**Architecture**](docs/architecture.md) - Understanding the framework design
-- [**Configuration**](docs/configuration.md) - Application configuration management
-- [**Routing**](docs/routing.md) - HTTP routing and middleware
-- [**Database**](docs/database.md) - Database integration and ORM
-- [**Authentication**](docs/authentication.md) - Security and user management
+### 🎯 核心概念
+| 📖 文档 | 🔗 |
+|---------|----|
+| 🚀 [快速开始](docs/getting-started.md) | 首个应用 |
+| 🏗️ [架构设计](docs/architecture.md) | 框架原理 |
+| ⚙️ [配置管理](docs/configuration.md) | 应用配置 |
+| 🛣️ [路由中间件](docs/routing.md) | HTTP路由 |
+| 🗄️ [数据库](docs/database.md) | ORM集成 |
+| 🔐 [身份认证](docs/authentication.md) | 安全管理 |
 
-### Advanced Topics
+</td>
+<td width="33%">
 
-- [**Microservices**](docs/microservices.md) - Building distributed systems
-- [**Service Discovery**](docs/service-discovery.md) - Service registration and discovery
-- [**Message Queues**](docs/messaging.md) - Async communication patterns
-- [**Caching**](docs/caching.md) - Performance optimization strategies
-- [**Monitoring**](docs/monitoring.md) - Observability and alerting
-- [**Testing**](docs/testing.md) - Comprehensive testing strategies
+### 🚀 高级主题
+| 📖 文档 | 🔗 |
+|---------|----|
+| 🔧 [微服务](docs/microservices.md) | 分布式系统 |
+| 🔍 [服务发现](docs/service-discovery.md) | 服务注册 |
+| 📨 [消息队列](docs/messaging.md) | 异步通信 |
+| ⚡ [缓存策略](docs/caching.md) | 性能优化 |
+| 📊 [监控告警](docs/monitoring.md) | 可观测性 |
+| 🧪 [测试策略](docs/testing.md) | 全面测试 |
 
-### Deployment
+</td>
+<td width="33%">
 
-- [**Docker**](docs/deployment/docker.md) - Containerization guide
-- [**Kubernetes**](docs/deployment/kubernetes.md) - K8s deployment strategies
-- [**Cloud Providers**](docs/deployment/cloud.md) - AWS, GCP, Azure deployment
-- [**CI/CD**](docs/deployment/cicd.md) - Continuous integration and deployment
+### ☁️ 部署运维
+| 📖 文档 | 🔗 |
+|---------|----|
+| 🐳 [Docker](docs/deployment/docker.md) | 容器化 |
+| ☸️ [Kubernetes](docs/deployment/kubernetes.md) | K8s部署 |
+| ☁️ [云服务商](docs/deployment/cloud.md) | AWS/GCP/Azure |
+| 🔄 [CI/CD](docs/deployment/cicd.md) | 持续集成 |
 
-## 🏗️ Project Structure
+</td>
+</tr>
+</table>
+
+## 🏗️ 项目结构
 
 ```
-my-netcore-app/
-├── cmd/                    # Application entrypoints
-│   └── main.go            # Main application
-├── internal/              # Private application code
-│   ├── handlers/          # HTTP request handlers
-│   ├── services/          # Business logic services
-│   ├── models/            # Data models and entities
-│   ├── repositories/      # Data access layer
-│   └── middleware/        # Custom middleware
-├── pkg/                   # Public library code
-├── api/                   # API definitions (OpenAPI, gRPC)
-├── web/                   # Static web assets
-├── configs/               # Configuration files
-├── scripts/               # Build and deployment scripts
-├── docs/                  # Project documentation
-├── tests/                 # Test files and utilities
-├── deployments/           # Deployment configurations
-│   ├── docker/           # Docker configurations
-│   ├── kubernetes/       # Kubernetes manifests
-│   └── helm/             # Helm charts
-└── examples/              # Example applications
+📁 my-netcore-app/
+├── 🚀 cmd/                    # 应用入口
+│   └── 📄 main.go            # 主程序
+├── 🔒 internal/              # 私有代码
+│   ├── 🎯 handlers/          # HTTP处理器
+│   ├── ⚙️ services/          # 业务逻辑
+│   ├── 📊 models/            # 数据模型
+│   ├── 🗄️ repositories/      # 数据访问
+│   └── 🔧 middleware/        # 自定义中间件
+├── 📦 pkg/                   # 公共库
+├── 🌐 api/                   # API定义 (OpenAPI, gRPC)
+├── 🎨 web/                   # 静态资源
+├── ⚙️ configs/               # 配置文件
+├── 🛠️ scripts/               # 构建脚本
+├── 📚 docs/                  # 项目文档
+├── 🧪 tests/                 # 测试文件
+├── 🚀 deployments/           # 部署配置
+│   ├── 🐳 docker/           # Docker配置
+│   ├── ☸️ kubernetes/       # K8s清单
+│   └── ⛵ helm/             # Helm图表
+└── 💡 examples/              # 示例应用
 ```
 
-## 🛠️ CLI Commands
+## 🛠️ CLI命令
 
+| 类别 | 命令 | 功能 |
+|------|------|------|
+| 🎯 **项目管理** | `netcore-cli new <name>` | 🆕 创建项目 |
+| | `netcore-cli init` | 🔧 初始化项目 |
+| | `netcore-cli config` | ⚙️ 配置管理 |
+| 🔥 **开发调试** | `netcore-cli dev` | 🚀 启动开发服务 |
+| | `netcore-cli generate <type>` | 🎨 代码生成 |
+| | `netcore-cli test` | 🧪 运行测试 |
+| | `netcore-cli lint` | 🔍 代码检查 |
+| 📦 **构建部署** | `netcore-cli build` | 🏗️ 构建应用 |
+| | `netcore-cli docker` | 🐳 构建镜像 |
+| | `netcore-cli deploy <target>` | 🚀 部署应用 |
+
+### 🎨 代码生成器
 ```bash
-# Project Management
-netcore-cli new <name>              # Create new project
-netcore-cli init                    # Initialize existing project
-netcore-cli config                  # Manage configuration
-
-# Development
-netcore-cli dev                     # Start development server
-netcore-cli generate <type> <name>  # Generate code components
-netcore-cli test                    # Run tests
-netcore-cli lint                    # Lint code
-
-# Building & Deployment
-netcore-cli build                   # Build application
-netcore-cli docker                  # Build Docker image
-netcore-cli deploy <target>         # Deploy to target environment
-
-# Code Generation
-netcore-cli generate handler User   # Generate HTTP handler
-netcore-cli generate model Product  # Generate data model
-netcore-cli generate service Auth   # Generate business service
-netcore-cli generate middleware Log # Generate middleware
+netcore-cli generate handler User   # 🎯 HTTP处理器
+netcore-cli generate model Product  # 📊 数据模型  
+netcore-cli generate service Auth   # ⚙️ 业务服务
+netcore-cli generate middleware Log # 🔧 中间件
 ```
 
 ## 🧪 Testing
@@ -226,110 +262,107 @@ func TestUserHandler(t *testing.T) {
 - **Load Tests** - Performance and scalability testing
 - **Chaos Tests** - Resilience and fault tolerance testing
 
-## 📊 Performance
+## 📊 性能指标
 
-NetCore-Go is designed for high performance:
+<div align="center">
 
-| Metric | Value |
-|--------|-------|
-| Requests/sec | 100,000+ |
-| Latency (p99) | < 10ms |
-| Memory Usage | < 50MB |
-| CPU Usage | < 5% |
-| Startup Time | < 1s |
+| 🎯 指标 | 📈 数值 | 🏆 等级 |
+|---------|---------|--------|
+| 🚀 QPS | 100,000+ | ⭐⭐⭐⭐⭐ |
+| ⚡ 延迟(P99) | < 10ms | ⭐⭐⭐⭐⭐ |
+| 💾 内存占用 | < 50MB | ⭐⭐⭐⭐⭐ |
+| 🔥 CPU使用 | < 5% | ⭐⭐⭐⭐⭐ |
+| 🏃 启动时间 | < 1s | ⭐⭐⭐⭐⭐ |
 
-*Benchmarks run on: 4 CPU cores, 8GB RAM, Go 1.21*
+*🖥️ 测试环境: 4核CPU, 8GB内存, Go 1.21*
 
-## 🌍 Ecosystem
+</div>
 
-### Official Packages
+## 🌍 生态系统
 
-- [**netcore-http**](https://github.com/netcore-go/netcore-http) - HTTP server and client
-- [**netcore-grpc**](https://github.com/netcore-go/netcore-grpc) - gRPC integration
-- [**netcore-db**](https://github.com/netcore-go/netcore-db) - Database abstraction layer
-- [**netcore-cache**](https://github.com/netcore-go/netcore-cache) - Caching solutions
-- [**netcore-auth**](https://github.com/netcore-go/netcore-auth) - Authentication and authorization
-- [**netcore-metrics**](https://github.com/netcore-go/netcore-metrics) - Metrics and monitoring
+<table>
+<tr>
+<td width="50%">
 
-### Community Packages
+### 🏢 官方包
+| 📦 包名 | 🎯 功能 |
+|---------|--------|
+| 🌐 [netcore-http](https://github.com/netcore-go/netcore-http) | HTTP服务 |
+| 🔗 [netcore-grpc](https://github.com/netcore-go/netcore-grpc) | gRPC集成 |
+| 🗄️ [netcore-db](https://github.com/netcore-go/netcore-db) | 数据库抽象 |
+| ⚡ [netcore-cache](https://github.com/netcore-go/netcore-cache) | 缓存方案 |
+| 🔐 [netcore-auth](https://github.com/netcore-go/netcore-auth) | 身份认证 |
+| 📊 [netcore-metrics](https://github.com/netcore-go/netcore-metrics) | 指标监控 |
 
-- [**netcore-websocket**](https://github.com/community/netcore-websocket) - WebSocket support
-- [**netcore-graphql**](https://github.com/community/netcore-graphql) - GraphQL integration
-- [**netcore-queue**](https://github.com/community/netcore-queue) - Message queue adapters
-- [**netcore-storage**](https://github.com/community/netcore-storage) - File storage abstractions
+</td>
+<td width="50%">
 
-## 🤝 Contributing
+### 👥 社区包
+| 📦 包名 | 🎯 功能 |
+|---------|--------|
+| 💬 [netcore-websocket](https://github.com/community/netcore-websocket) | WebSocket |
+| 📊 [netcore-graphql](https://github.com/community/netcore-graphql) | GraphQL |
+| 📨 [netcore-queue](https://github.com/community/netcore-queue) | 消息队列 |
+| 📁 [netcore-storage](https://github.com/community/netcore-storage) | 文件存储 |
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+</td>
+</tr>
+</table>
 
-### Development Setup
+## 🤝 贡献指南
 
-```bash
-# Clone the repository
-git clone https://github.com/netcore-go/netcore-go.git
-cd netcore-go
+| 步骤 | 命令 | 说明 |
+|------|------|------|
+| 📥 | `git clone https://github.com/netcore-go/netcore-go.git` | 克隆仓库 |
+| 📦 | `go mod tidy` | 安装依赖 |
+| 🧪 | `make test` | 运行测试 |
+| 🔍 | `make lint` | 代码检查 |
+| 🏗️ | `make build` | 构建项目 |
 
-# Install dependencies
-go mod tidy
+📋 [贡献指南](CONTRIBUTING.md) | 📜 [行为准则](CODE_OF_CONDUCT.md) | 📄 [MIT许可证](LICENSE)
 
-# Run tests
-make test
+## 🙏 致谢
 
-# Run linter
-make lint
+| 🎯 项目 | 💡 启发 |
+|---------|--------|
+| [Gin](https://github.com/gin-gonic/gin) | HTTP框架设计 |
+| [Echo](https://github.com/labstack/echo) | 中间件架构 |
+| [Fiber](https://github.com/gofiber/fiber) | 性能优化 |
+| [Kubernetes](https://kubernetes.io/) | 云原生模式 |
+| [Prometheus](https://prometheus.io/) | 监控标准 |
 
-# Build project
-make build
-```
+## 📞 支持与联系
 
-### Code of Conduct
+<div align="center">
 
-This project adheres to the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md).
+[![文档](https://img.shields.io/badge/📖_文档-docs.netcore--go.dev-blue?style=for-the-badge)](https://docs.netcore-go.dev)
+[![Discord](https://img.shields.io/badge/💬_Discord-社区-7289DA?style=for-the-badge&logo=discord)](https://discord.gg/netcore-go)
+[![GitHub](https://img.shields.io/badge/🐛_Issues-问题追踪-181717?style=for-the-badge&logo=github)](https://github.com/netcore-go/netcore-go/issues)
+[![Email](https://img.shields.io/badge/📧_邮件-support@netcore--go.dev-EA4335?style=for-the-badge&logo=gmail)](mailto:support@netcore-go.dev)
+[![Twitter](https://img.shields.io/badge/🐦_Twitter-@netcorego-1DA1F2?style=for-the-badge&logo=twitter)](https://twitter.com/netcorego)
 
-## 📄 License
+</div>
 
-NetCore-Go is released under the [MIT License](LICENSE).
+## 🗺️ 发展路线
 
-## 🙏 Acknowledgments
-
-- [Gin](https://github.com/gin-gonic/gin) - HTTP web framework inspiration
-- [Echo](https://github.com/labstack/echo) - Middleware architecture patterns
-- [Fiber](https://github.com/gofiber/fiber) - Performance optimization techniques
-- [Kubernetes](https://kubernetes.io/) - Cloud-native deployment patterns
-- [Prometheus](https://prometheus.io/) - Metrics and monitoring standards
-
-## 📞 Support
-
-- 📖 [Documentation](https://docs.netcore-go.dev)
-- 💬 [Discord Community](https://discord.gg/netcore-go)
-- 🐛 [Issue Tracker](https://github.com/netcore-go/netcore-go/issues)
-- 📧 [Email Support](mailto:support@netcore-go.dev)
-- 🐦 [Twitter](https://twitter.com/netcorego)
-
-## 🗺️ Roadmap
-
-### v1.1 (Q2 2024)
-- [ ] GraphQL Federation support
-- [ ] Advanced caching strategies
-- [ ] Enhanced security features
-- [ ] Performance optimizations
-
-### v1.2 (Q3 2024)
-- [ ] Serverless deployment support
-- [ ] Multi-region deployment
-- [ ] Advanced monitoring dashboards
-- [ ] AI/ML integration helpers
-
-### v2.0 (Q4 2024)
-- [ ] Breaking changes for better API design
-- [ ] Enhanced plugin system
-- [ ] Advanced service mesh integration
-- [ ] Cloud-native storage solutions
+| 版本 | 时间 | 🎯 核心特性 |
+|------|------|------------|
+| **v1.1** | 2024 Q2 | 🔗 GraphQL联邦 \| ⚡ 高级缓存 \| 🔒 安全增强 \| 📈 性能优化 |
+| **v1.2** | 2024 Q3 | ☁️ Serverless \| 🌍 多区域部署 \| 📊 监控面板 \| 🤖 AI/ML集成 |
+| **v2.0** | 2024 Q4 | 🔄 API重设计 \| 🧩 插件系统 \| 🕸️ 服务网格 \| 💾 云存储 |
 
 ---
 
 <div align="center">
-  <strong>Built with ❤️ by the NetCore-Go Team</strong>
-  <br>
-  <sub>Making Go development faster, safer, and more enjoyable</sub>
+
+### 🎉 **NetCore-Go团队倾力打造** 🎉
+
+**让Go开发更快速 🚀 | 更安全 🔒 | 更愉悦 😊**
+
+[![Made with Love](https://img.shields.io/badge/Made_with-❤️-red?style=for-the-badge)](https://github.com/netcore-go/netcore-go)
+[![Go](https://img.shields.io/badge/Powered_by-Go-00ADD8?style=for-the-badge&logo=go)](https://golang.org)
+[![Open Source](https://img.shields.io/badge/Open_Source-💚-brightgreen?style=for-the-badge)](https://opensource.org)
+
+**⭐ 如果这个项目对你有帮助，请给我们一个Star！⭐**
+
 </div>

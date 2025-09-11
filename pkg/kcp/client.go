@@ -11,7 +11,7 @@ import (
 
 	"github.com/xtaci/kcp-go/v5"
 
-	"github.com/netcore-go/pkg/core"
+	"github.com/netcore-go/netcore/pkg/core"
 )
 
 // KCPClient KCP客户端
@@ -108,10 +108,7 @@ func (c *KCPClient) Connect() error {
 	case "aes":
 		kcpConn, err = kcp.DialWithOptions(c.address, nil, c.kcpConfig.DataShard, c.kcpConfig.ParityShard)
 	case "none":
-		conn, err := kcp.Dial(c.address)
-		if err == nil {
-			kcpConn = conn.(*kcp.UDPSession)
-		}
+		kcpConn, err = kcp.Dial(c.address)
 	default:
 		kcpConn, err = kcp.DialWithOptions(c.address, nil, c.kcpConfig.DataShard, c.kcpConfig.ParityShard)
 	}
@@ -400,6 +397,5 @@ func (c *KCPClient) SetWindowSize(sndWnd, rcvWnd int) {
 		c.conn.SetWindowSize(sndWnd, rcvWnd)
 	}
 }
-
 
 

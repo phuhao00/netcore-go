@@ -6,14 +6,13 @@ package rpc
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/netcore-go/pkg/pool"
+	"github.com/netcore-go/netcore/pkg/pool"
 )
 
 // RPCClient RPC客户端
@@ -366,6 +365,5 @@ func (c *RPCConnection) ReadResponse() (*RPCResponse, error) {
 	
 	return &response, nil
 }
-
 
 

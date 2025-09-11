@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/netcore-go/pkg/core"
+	"github.com/netcore-go/netcore/pkg/core"
 )
 
 // MiddlewareManager 中间件管理器
@@ -431,5 +431,4 @@ func (p *PresetConfigurations) Production() {
 	cacheMiddleware := NewCacheMiddleware(cacheConfig)
 	p.manager.RegisterWithConfig(cacheMiddleware, cacheConfig)
 }
-
 

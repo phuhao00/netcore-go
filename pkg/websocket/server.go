@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/netcore-go/pkg/core"
+	"github.com/netcore-go/netcore/pkg/core"
 )
 
 const (
@@ -425,7 +425,6 @@ func (s *Server) Broadcast(msg core.Message) {
 		stats.BytesSent += int64(len(msg.Data) * len(connections))
 	})
 }
-
 
 
 

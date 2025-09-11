@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/netcore-go/pkg/core"
+	"github.com/netcore-go/netcore/pkg/core"
 )
 
 // RateLimitAlgorithm 限流算法类型
@@ -487,6 +487,5 @@ func (m *AdvancedRateLimitMiddleware) Reset(key string) {
 func (m *AdvancedRateLimitMiddleware) GetAlgorithm() RateLimitAlgorithm {
 	return m.config.Algorithm
 }
-
 
 

@@ -12,7 +12,6 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -162,7 +161,7 @@ func (c *GRPCClient) IsConnected() bool {
 	}
 	
 	state := c.conn.GetState()
-	return state == connectivity.Ready || state == connectivity.Idle
+	return state == grpc.Ready || state == grpc.Idle
 }
 
 // SetMetadata 设置请求元数据
