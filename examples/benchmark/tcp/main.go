@@ -1,4 +1,4 @@
-﻿// Package main TCP性能测试示例
+// Package main TCP性能测试示例
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -8,12 +8,13 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/netcore-go"
-	"github.com/netcore-go/pkg/core"
+	"github.com/netcore-go/pkg/tcp"
 )
 
 const (

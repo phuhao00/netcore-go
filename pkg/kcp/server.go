@@ -14,7 +14,6 @@ import (
 	"github.com/xtaci/kcp-go/v5"
 
 	"github.com/netcore-go/pkg/core"
-	"github.com/netcore-go/pkg/pool"
 )
 
 // KCPServer KCP服务器实现
@@ -24,6 +23,8 @@ type KCPServer struct {
 	connections map[string]*KCPConnection
 	connMu      sync.RWMutex
 	kcpConfig   *KCPConfig
+	running     int32
+	handler     core.MessageHandler
 }
 
 // KCPConfig KCP配置
@@ -92,6 +93,22 @@ func NewKCPServer(opts ...core.ServerOption) *KCPServer {
 	return server
 }
 
+// SetHandler 设置消息处理器
+func (s *KCPServer) SetHandler(handler core.MessageHandler) {
+	s.handler = handler
+}
+
+// Stop 停止KCP服务器
+func (s *KCPServer) Stop() error {
+	atomic.StoreInt32(&s.running, 0)
+	
+	if s.listener != nil {
+		return s.listener.Close()
+	}
+	
+	return nil
+}
+
 // SetKCPConfig 设置KCP配置
 func (s *KCPServer) SetKCPConfig(config *KCPConfig) {
 	s.kcpConfig = config
@@ -103,41 +120,45 @@ func (s *KCPServer) Start(addr string) error {
 	var err error
 	
 	// 根据加密算法创建监听器
+	var listener net.Listener
 	switch s.kcpConfig.Crypt {
 	case "aes":
-		s.listener, err = kcp.ListenWithOptions(addr, nil, s.kcpConfig.DataShard, s.kcpConfig.ParityShard)
+		listener, err = kcp.ListenWithOptions(addr, nil, s.kcpConfig.DataShard, s.kcpConfig.ParityShard)
 	case "none":
-		s.listener, err = kcp.Listen(addr)
+		listener, err = kcp.Listen(addr)
 	default:
-		s.listener, err = kcp.ListenWithOptions(addr, nil, s.kcpConfig.DataShard, s.kcpConfig.ParityShard)
+		listener, err = kcp.ListenWithOptions(addr, nil, s.kcpConfig.DataShard, s.kcpConfig.ParityShard)
 	}
 	
 	if err != nil {
 		return fmt.Errorf("failed to listen on %s: %v", addr, err)
 	}
 	
-	s.Listener = s.listener
-	s.Running = true
-	s.Stats.StartTime = time.Now()
+	// 类型断言为KCP监听器
+	s.listener = listener.(*kcp.Listener)
+	// 设置运行状态
+	atomic.StoreInt32(&s.running, 1)
+	stats := s.BaseServer.GetStats()
+	stats.StartTime = time.Now()
 	
-	// 启动连接池
-	if s.Config.EnableConnectionPool {
-		s.ConnPool = pool.NewConnectionPool(pool.PoolConfig{
-			InitialSize: 10,
-			MaxSize:     s.Config.MaxConnections,
-			IdleTimeout: 5 * time.Minute,
-		})
-	}
+	// 启动连接池（暂时注释掉）
+	// if s.config.EnableConnectionPool {
+	//	s.ConnPool = pool.NewConnectionPool(pool.PoolConfig{
+	//		InitialSize: 10,
+	//		MaxSize:     s.config.MaxConnections,
+	//		IdleTimeout: 5 * time.Minute,
+	//	})
+	// }
 	
-	// 启动内存池
-	if s.Config.EnableMemoryPool {
-		s.MemPool = pool.NewMemoryPool(s.Config.ReadBufferSize, 100)
-	}
+	// 启动内存池（暂时注释掉）
+	// if s.config.EnableMemoryPool {
+	//	s.MemPool = pool.NewMemoryPool(s.config.ReadBufferSize, 100)
+	// }
 	
-	// 启动协程池
-	if s.Config.EnableGoroutinePool {
-		s.GoroutinePool = pool.NewGoroutinePool(1000, 10000)
-	}
+	// 启动协程池（暂时注释掉）
+	// if s.config.EnableGoroutinePool {
+	//	s.GoroutinePool = pool.NewGoroutinePool(1000, 10000)
+	// }
 	
 	go s.acceptLoop()
 	
@@ -146,18 +167,21 @@ func (s *KCPServer) Start(addr string) error {
 
 // acceptLoop 接受连接循环
 func (s *KCPServer) acceptLoop() {
-	for s.Running {
+	for atomic.LoadInt32(&s.running) == 1 {
 		conn, err := s.listener.AcceptKCP()
 		if err != nil {
-			if s.Running {
-				s.Stats.ErrorCount++
-				s.Stats.LastError = err.Error()
+			if atomic.LoadInt32(&s.running) == 1 {
+				stats := s.BaseServer.GetStats()
+				stats.ErrorCount++
+				stats.LastError = err.Error()
 			}
 			continue
 		}
 		
 		// 检查连接数限制
-		if s.Stats.ActiveConnections >= int64(s.Config.MaxConnections) {
+		stats := s.BaseServer.GetStats()
+		config := s.BaseServer.GetConfig()
+		if stats.ActiveConnections >= int64(config.MaxConnections) {
 			conn.Close()
 			continue
 		}
@@ -173,14 +197,14 @@ func (s *KCPServer) acceptLoop() {
 		s.connections[kcpConn.ID()] = kcpConn
 		s.connMu.Unlock()
 		
-		// 使用协程池处理连接
-		if s.GoroutinePool != nil {
-			s.GoroutinePool.Submit(func() {
-				s.handleConnection(kcpConn)
-			})
-		} else {
+		// 使用协程池处理连接（暂时注释掉）
+		// if s.GoroutinePool != nil {
+		//	s.GoroutinePool.Submit(func() {
+		//		s.handleConnection(kcpConn)
+		//	})
+		// } else {
 			go s.handleConnection(kcpConn)
-		}
+		// }
 	}
 }
 
@@ -211,15 +235,16 @@ func (s *KCPServer) configureKCP(conn *kcp.UDPSession) {
 	}
 	
 	// 设置读写缓冲区
-	conn.SetReadBuffer(s.Config.ReadBufferSize)
-	conn.SetWriteBuffer(s.Config.WriteBufferSize)
+	config := s.BaseServer.GetConfig()
+	conn.SetReadBuffer(config.ReadBufferSize)
+	conn.SetWriteBuffer(config.WriteBufferSize)
 	
 	// 设置超时
-	if s.Config.ReadTimeout > 0 {
-		conn.SetReadDeadline(time.Now().Add(s.Config.ReadTimeout))
+	if config.ReadTimeout > 0 {
+		conn.SetReadDeadline(time.Now().Add(config.ReadTimeout))
 	}
-	if s.Config.WriteTimeout > 0 {
-		conn.SetWriteDeadline(time.Now().Add(s.Config.WriteTimeout))
+	if config.WriteTimeout > 0 {
+		conn.SetWriteDeadline(time.Now().Add(config.WriteTimeout))
 	}
 }
 
@@ -227,8 +252,9 @@ func (s *KCPServer) configureKCP(conn *kcp.UDPSession) {
 func (s *KCPServer) handleConnection(conn *KCPConnection) {
 	defer func() {
 		if r := recover(); r != nil {
-			s.Stats.ErrorCount++
-			s.Stats.LastError = fmt.Sprintf("panic: %v", r)
+			stats := s.BaseServer.GetStats()
+			stats.ErrorCount++
+			stats.LastError = fmt.Sprintf("panic: %v", r)
 		}
 		
 		// 从连接管理中移除
@@ -239,32 +265,34 @@ func (s *KCPServer) handleConnection(conn *KCPConnection) {
 		conn.Close()
 	}()
 	
-	atomic.AddInt64(&s.Stats.ActiveConnections, 1)
-	atomic.AddInt64(&s.Stats.TotalConnections, 1)
-	defer atomic.AddInt64(&s.Stats.ActiveConnections, -1)
+	stats := s.BaseServer.GetStats()
+	atomic.AddInt64(&stats.ActiveConnections, 1)
+	atomic.AddInt64(&stats.TotalConnections, 1)
+	defer atomic.AddInt64(&stats.ActiveConnections, -1)
 	
 	// 调用连接处理器
-	if s.Handler != nil {
-		s.Handler.OnConnect(conn)
-		defer s.Handler.OnDisconnect(conn, nil)
+	if s.handler != nil {
+		s.handler.OnConnect(conn)
+		defer s.handler.OnDisconnect(conn, nil)
 	}
 	
 	// 处理消息
 	for {
 		msg, err := conn.ReadMessage()
 		if err != nil {
-			if s.Handler != nil {
-				s.Handler.OnDisconnect(conn, err)
+			if s.handler != nil {
+				s.handler.OnDisconnect(conn, err)
 			}
 			break
 		}
 		
-		atomic.AddInt64(&s.Stats.MessagesReceived, 1)
-		atomic.AddInt64(&s.Stats.BytesReceived, int64(len(msg.Data)))
+		stats := s.BaseServer.GetStats()
+		atomic.AddInt64(&stats.MessagesReceived, 1)
+		atomic.AddInt64(&stats.BytesReceived, int64(len(msg.Data)))
 		
 		// 处理消息
-		if s.Handler != nil {
-			s.Handler.OnMessage(conn, msg)
+		if s.handler != nil {
+			s.handler.OnMessage(conn, msg)
 		}
 	}
 }
@@ -316,38 +344,9 @@ func (s *KCPServer) GetConnections() []*KCPConnection {
 	return connections
 }
 
-// Stop 停止KCP服务器
-func (s *KCPServer) Stop() error {
-	s.Running = false
-	
-	// 关闭所有连接
-	s.connMu.Lock()
-	for _, conn := range s.connections {
-		conn.Close()
-	}
-	s.connections = make(map[string]*KCPConnection)
-	s.connMu.Unlock()
-	
-	if s.listener != nil {
-		return s.listener.Close()
-	}
-	
-	return nil
-}
-
 // GetStats 获取服务器统计信息
 func (s *KCPServer) GetStats() *core.ServerStats {
-	return &s.Stats
-}
-
-// SetHandler 设置消息处理器
-func (s *KCPServer) SetHandler(handler core.MessageHandler) {
-	s.Handler = handler
-}
-
-// SetMiddleware 设置中间件
-func (s *KCPServer) SetMiddleware(middleware ...core.Middleware) {
-	s.Middlewares = middleware
+	return s.BaseServer.GetStats()
 }
 
 // GetKCPStats 获取KCP特定统计信息

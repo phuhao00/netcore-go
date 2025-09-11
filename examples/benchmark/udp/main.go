@@ -1,4 +1,4 @@
-﻿// Package main UDP性能测试示例
+// Package main UDP性能测试示例
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -6,13 +6,15 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net"
+	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	netcore "github.com/netcore-go"
-	"github.com/netcore-go/pkg/core"
+	"github.com/netcore-go/pkg/udp"
 )
 
 // BenchmarkHandler UDP性能测试处理器
@@ -108,7 +110,7 @@ type BenchmarkResult struct {
 	MessagesPerSec  float64
 	MBytesPerSec    float64
 	AvgLatency      time.Duration
-	ServerStats     *netcore.ServerStats
+	ServerStats     interface{}
 }
 
 // runBenchmark 运行单个性能测试
@@ -118,12 +120,9 @@ func runBenchmark(clientCount, messageSize int, duration time.Duration) *Benchma
 	handler.Reset()
 
 	// 创建UDP服务器
-	server := netcore.NewUDPServer(
-		netcore.WithReadBufferSize(8192),
-		netcore.WithWriteBufferSize(8192),
-		netcore.WithMaxConnections(clientCount*2),
-		netcore.WithHeartbeat(false, 0), // 禁用心跳以提高性能
-	)
+	server := udp.NewServer()
+	server.SetReadBufferSize(8192)
+	server.SetWriteBufferSize(8192)
 
 	server.SetHandler(handler)
 
@@ -162,7 +161,7 @@ func runBenchmark(clientCount, messageSize int, duration time.Duration) *Benchma
 	actualDuration := time.Since(startTime)
 
 	// 获取服务器统计信息
-	serverStats := server.GetStats()
+	var serverStats interface{} = nil
 	_, handlerBytes, _ := handler.GetStats()
 
 	// 计算性能指标

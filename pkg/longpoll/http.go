@@ -1,4 +1,4 @@
-﻿// Package longpoll HTTP长轮询实现
+// Package longpoll HTTP长轮询实现
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -7,13 +7,11 @@ package longpoll
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/netcore-go/pkg/core"
-	"github.com/netcore-go/pkg/http"
 )
 
 // HTTPLongPollConfig HTTP长轮询配置
@@ -368,11 +366,11 @@ func (m *HTTPLongPollMiddleware) getClientID(ctx core.Context) (string, error) {
 
 	// 从Authorization头部获取token
 	msg := ctx.Message()
-	if msg == nil {
+	if msg.Type == 0 {
 		return "", fmt.Errorf("no message in context")
 	}
 
-	auth := msg.GetHeader("Authorization")
+	auth, _ := msg.GetHeader("Authorization")
 	if auth == "" {
 		return "", fmt.Errorf("missing authorization header")
 	}
@@ -408,11 +406,11 @@ func (m *HTTPLongPollMiddleware) getQueryParam(ctx core.Context, key string) str
 // parseJSONBody 解析JSON请求体
 func (m *HTTPLongPollMiddleware) parseJSONBody(ctx core.Context, v interface{}) error {
 	msg := ctx.Message()
-	if msg == nil {
+	if msg.Type == 0 {
 		return fmt.Errorf("no message in context")
 	}
 
-	data := msg.GetData()
+	data := msg.Data
 	if len(data) == 0 {
 		return fmt.Errorf("empty request body")
 	}

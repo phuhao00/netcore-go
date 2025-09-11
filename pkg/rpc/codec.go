@@ -78,8 +78,8 @@ func (c *GobCodec) Decode(data interface{}, v interface{}) error {
 	var buf *bytes.Buffer
 	
 	// 如果data是[]byte，创建buffer
-	if bytes, ok := data.([]byte); ok {
-		buf = bytes.NewBuffer(bytes)
+	if byteData, ok := data.([]byte); ok {
+		buf = bytes.NewBuffer(byteData)
 	} else {
 		// 如果data是其他类型，先编码
 		encoded, err := c.Encode(data)

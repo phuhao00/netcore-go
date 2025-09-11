@@ -16,7 +16,8 @@ import (
 	"time"
 )
 
-// Compressor `n�?type Compressor interface {
+// Compressor 压缩器接口
+type Compressor interface {
 	Compress(src, dst string) error
 	Decompress(src, dst string) error
 	GetName() string
@@ -24,50 +25,66 @@ import (
 	GetCompressionRatio(originalSize, compressedSize int64) float64
 }
 
-// ArchiveManager `n�?type ArchiveManager struct {
+// ArchiveManager 归档管理器
+type ArchiveManager struct {
 	mu sync.RWMutex
 	
-	// `n�?	compressors map[string]Compressor
+	// 压缩器映射
+	compressors map[string]Compressor
 	
-	// `n
+	// 配置
 	config ArchiveConfig
 	
-	// `n
+	// 统计信息
 	stats ArchiveStats
 	
-	// `n
+	// 工作队列
 	workQueue chan *ArchiveTask
 	workers   int
 	stopChan  chan struct{}
 	done      chan struct{}
 	
-	// `n
-	onCompress   func(string, string, float64) // `n�? `n, `n�?	onDecompress func(string, string)          // `n, `n
-	onArchive    func(string, string)          // `n�? `n
+	// 回调函数
+	onCompress   func(string, string, float64) // 压缩完成回调
+	onDecompress func(string, string)          // 解压完成回调
+	onArchive    func(string, string)          // 归档完成回调
 	onError      func(error)
 }
 
-// ArchiveConfig `n`ntype ArchiveConfig struct {
-	Enabled           bool          `json:"enabled"`            // `n
-	Compression       string        `json:"compression"`        // `n: gzip, lz4, zstd
-	CompressionLevel  int           `json:"compression_level"`  // `n
-	MinFileSize       int64         `json:"min_file_size"`      // `n（`n�?	MaxFileAge        time.Duration `json:"max_file_age"`       // `n�?	ArchiveDirectory  string        `json:"archive_directory"`  // `n
-	DeleteOriginal    bool          `json:"delete_original"`    // `n�?	WorkerCount       int           `json:"worker_count"`       // `n�?	QueueSize         int           `json:"queue_size"`         // `n
-	BatchSize         int           `json:"batch_size"`         // `n�?	RetryAttempts     int           `json:"retry_attempts"`     // `n
-	RetryDelay        time.Duration `json:"retry_delay"`        // `n
-	EnableMetrics     bool          `json:"enable_metrics"`     // `n
+// ArchiveConfig 归档配置
+type ArchiveConfig struct {
+	Enabled           bool          `json:"enabled"`            // 是否启用
+	Compression       string        `json:"compression"`        // 压缩算法: gzip, lz4, zstd
+	CompressionLevel  int           `json:"compression_level"`  // 压缩级别
+	MinFileSize       int64         `json:"min_file_size"`      // 最小文件大小
+	MaxFileAge        time.Duration `json:"max_file_age"`       // 最大文件年龄
+	ArchiveDirectory  string        `json:"archive_directory"`  // 归档目录
+	DeleteOriginal    bool          `json:"delete_original"`    // 删除原文件
+	WorkerCount       int           `json:"worker_count"`       // 工作线程数
+	QueueSize         int           `json:"queue_size"`         // 队列大小
+	BatchSize         int           `json:"batch_size"`         // 批处理大小
+	RetryAttempts     int           `json:"retry_attempts"`     // 重试次数
+	RetryDelay        time.Duration `json:"retry_delay"`        // 重试延迟
+	EnableMetrics     bool          `json:"enable_metrics"`     // 启用指标
 }
 
-// ArchiveStats `n`ntype ArchiveStats struct {
-	TotalFiles        int64   `json:"total_files"`        // `n
-	CompressedFiles   int64   `json:"compressed_files"`   // `n�?	ArchivedFiles     int64   `json:"archived_files"`     // `n�?	FailedFiles       int64   `json:"failed_files"`       // `n�?	OriginalSize      int64   `json:"original_size"`      // `n
-	CompressedSize    int64   `json:"compressed_size"`    // `n�?	SpaceSaved        int64   `json:"space_saved"`        // `n
-	CompressionRatio  float64 `json:"compression_ratio"`  // `n�?	ProcessingTime    int64   `json:"processing_time_ns"` // `n（`n）
-	QueueLength       int64   `json:"queue_length"`       // `n
-	ActiveWorkers     int64   `json:"active_workers"`     // `n
+// ArchiveStats 归档统计
+type ArchiveStats struct {
+	TotalFiles        int64   `json:"total_files"`        // 总文件数
+	CompressedFiles   int64   `json:"compressed_files"`   // 已压缩文件数
+	ArchivedFiles     int64   `json:"archived_files"`     // 已归档文件数
+	FailedFiles       int64   `json:"failed_files"`       // 失败文件数
+	OriginalSize      int64   `json:"original_size"`      // 原始大小
+	CompressedSize    int64   `json:"compressed_size"`    // 压缩后大小
+	SpaceSaved        int64   `json:"space_saved"`        // 节省空间
+	CompressionRatio  float64 `json:"compression_ratio"`  // 压缩比
+	ProcessingTime    int64   `json:"processing_time_ns"` // 处理时间（纳秒）
+	QueueLength       int64   `json:"queue_length"`       // 队列长度
+	ActiveWorkers     int64   `json:"active_workers"`     // 活跃工作线程
 }
 
-// ArchiveTask `n`ntype ArchiveTask struct {
+// ArchiveTask 归档任务
+type ArchiveTask struct {
 	ID          string
 	SourceFile  string
 	TargetFile  string
@@ -77,7 +94,8 @@ import (
 	Callback    func(error)
 }
 
-// ArchiveOperation `n`ntype ArchiveOperation int
+// ArchiveOperation 归档操作类型
+type ArchiveOperation int
 
 const (
 	OperationCompress ArchiveOperation = iota
@@ -85,7 +103,8 @@ const (
 	OperationArchive
 )
 
-// String `n�?func (op ArchiveOperation) String() string {
+// String 返回操作类型字符串
+func (op ArchiveOperation) String() string {
 	switch op {
 	case OperationCompress:
 		return "compress"
@@ -98,8 +117,10 @@ const (
 	}
 }
 
-// NewArchiveManager `n�?func NewArchiveManager(config ArchiveConfig) *ArchiveManager {
-	// `n�?	if config.CompressionLevel <= 0 {
+// NewArchiveManager 创建归档管理器
+func NewArchiveManager(config ArchiveConfig) *ArchiveManager {
+	// 设置默认值
+	if config.CompressionLevel <= 0 {
 		config.CompressionLevel = 6
 	}
 	if config.MinFileSize <= 0 {
@@ -136,37 +157,43 @@ const (
 		done:        make(chan struct{}),
 	}
 	
-	// `n�?	am.RegisterCompressor(NewGzipCompressor(config.CompressionLevel))
+	// 注册压缩器
+	am.RegisterCompressor(NewGzipCompressor(config.CompressionLevel))
 	am.RegisterCompressor(NewLZ4Compressor())
 	am.RegisterCompressor(NewZstdCompressor(config.CompressionLevel))
 	
-	// `n`nif config.Enabled {
+	// 如果启用则自动开始
+	if config.Enabled {
 		am.Start()
 	}
 	
 	return am
 }
 
-// RegisterCompressor `n�?func (am *ArchiveManager) RegisterCompressor(compressor Compressor) {
+// RegisterCompressor 注册压缩器
+func (am *ArchiveManager) RegisterCompressor(compressor Compressor) {
 	am.mu.Lock()
 	am.compressors[compressor.GetName()] = compressor
 	am.mu.Unlock()
 }
 
-// Start `n�?func (am *ArchiveManager) Start() {
+// Start 启动归档管理器
+func (am *ArchiveManager) Start() {
 	for i := 0; i < am.workers; i++ {
 		go am.worker(i)
 	}
 }
 
-// Stop `n�?func (am *ArchiveManager) Stop() {
+// Stop 停止归档管理器
+func (am *ArchiveManager) Stop() {
 	close(am.stopChan)
 	<-am.done
 }
 
-// worker `n`nfunc (am *ArchiveManager) worker(id int) {
+// worker 工作线程
+func (am *ArchiveManager) worker(id int) {
 	defer func() {
-		if id == 0 { // `nworker`ndone`n
+		if id == 0 { // 最后一个worker关闭done通道
 			close(am.done)
 		}
 	}()
@@ -185,7 +212,8 @@ const (
 	}
 }
 
-// processTask `n`nfunc (am *ArchiveManager) processTask(task *ArchiveTask) {
+// processTask 处理任务
+func (am *ArchiveManager) processTask(task *ArchiveTask) {
 	start := time.Now()
 	var err error
 	
@@ -198,20 +226,23 @@ const (
 		err = am.archiveFile(task.SourceFile, task.TargetFile)
 	}
 	
-	// `n`nif am.config.EnableMetrics {
+	// 更新处理时间统计
+	if am.config.EnableMetrics {
 		atomic.AddInt64(&am.stats.ProcessingTime, time.Since(start).Nanoseconds())
 	}
 	
-	// `n�?	if err != nil {
+	// 处理错误和重试
+	if err != nil {
 		if task.RetryCount < am.config.RetryAttempts {
 			task.RetryCount++
 			time.Sleep(am.config.RetryDelay)
 			
-			// `n
+			// 重新加入队列
 			select {
 			case am.workQueue <- task:
 			default:
-				// `n，`n`nif am.config.EnableMetrics {
+				// 队列满，记录失败
+				if am.config.EnableMetrics {
 					atomic.AddInt64(&am.stats.FailedFiles, 1)
 				}
 				if am.onError != nil {

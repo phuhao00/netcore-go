@@ -11,13 +11,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/netcore-go/pkg/core"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
-
-	"github.com/netcore-go/pkg/core"
-	"github.com/netcore-go/pkg/pool"
 )
 
 // GRPCServer gRPC服务器实现
@@ -91,11 +89,8 @@ func (s *GRPCServer) Start(addr string) error {
 	
 	// 启动连接池
 	if config.EnableConnectionPool {
-		s.ConnPool = pool.NewConnectionPool(pool.PoolConfig{
-			InitialSize: 10,
-			MaxSize:     config.MaxConnections,
-			IdleTimeout: 5 * time.Minute,
-		})
+		// Connection pool initialization would go here
+		// s.connPool = pool.NewConnectionPool(...)
 	}
 	
 	// 启动内存池
@@ -147,8 +142,9 @@ func (s *GRPCServer) Start(addr string) error {
 	// 启动服务器
 	go func() {
 		if err := s.grpcServer.Serve(listener); err != nil {
-			s.Stats.ErrorCount++
-			s.Stats.LastError = err.Error()
+			stats := s.BaseServer.GetStats()
+			stats.ErrorCount++
+			stats.LastError = err.Error()
 		}
 	}()
 	
@@ -157,32 +153,26 @@ func (s *GRPCServer) Start(addr string) error {
 
 // Stop 停止gRPC服务器
 func (s *GRPCServer) Stop() error {
-	s.Running = false
-	
 	if s.grpcServer != nil {
 		s.grpcServer.GracefulStop()
 	}
-	
-	if s.Listener != nil {
-		return s.Listener.Close()
-	}
-	
-	return nil
+
+	return s.BaseServer.Stop()
 }
 
 // GetStats 获取服务器统计信息
 func (s *GRPCServer) GetStats() *core.ServerStats {
-	return &s.Stats
+	return s.BaseServer.GetStats()
 }
 
 // SetHandler 设置消息处理器（gRPC不需要）
 func (s *GRPCServer) SetHandler(handler core.MessageHandler) {
-	s.Handler = handler
+	s.BaseServer.SetHandler(handler)
 }
 
 // SetMiddleware 设置中间件（gRPC使用拦截器）
 func (s *GRPCServer) SetMiddleware(middleware ...core.Middleware) {
-	s.Middlewares = middleware
+	s.BaseServer.SetMiddleware(middleware...)
 }
 
 // loggingInterceptor 日志拦截器
@@ -201,15 +191,17 @@ func (s *GRPCServer) loggingInterceptor(ctx context.Context, req interface{}, in
 	// 记录请求结束
 	duration := time.Since(start)
 	if err != nil {
-		fmt.Printf("[gRPC] Request failed: method=%s, duration=%v, error=%v\n", info.FullMethod, duration, err)
-		s.Stats.ErrorCount++
-		s.Stats.LastError = err.Error()
-	} else {
-		fmt.Printf("[gRPC] Request completed: method=%s, duration=%v\n", info.FullMethod, duration)
-	}
-	
-	s.Stats.MessagesReceived++
-	s.Stats.MessagesSent++
+			fmt.Printf("[gRPC] Request failed: method=%s, duration=%v, error=%v\n", info.FullMethod, duration, err)
+			stats := s.BaseServer.GetStats()
+			stats.ErrorCount++
+			stats.LastError = err.Error()
+		} else {
+			fmt.Printf("[gRPC] Request completed: method=%s, duration=%v\n", info.FullMethod, duration)
+		}
+		
+		stats := s.BaseServer.GetStats()
+		stats.MessagesReceived++
+		stats.MessagesSent++
 	
 	return resp, err
 }
@@ -239,8 +231,9 @@ func (s *GRPCServer) recoveryInterceptor(ctx context.Context, req interface{}, i
 	defer func() {
 		if r := recover(); r != nil {
 			err = status.Errorf(codes.Internal, "panic recovered: %v", r)
-			s.Stats.ErrorCount++
-			s.Stats.LastError = fmt.Sprintf("panic: %v", r)
+			stats := s.BaseServer.GetStats()
+			stats.ErrorCount++
+			stats.LastError = fmt.Sprintf("panic: %v", r)
 			fmt.Printf("[gRPC] Panic recovered: method=%s, panic=%v\n", info.FullMethod, r)
 		}
 	}()

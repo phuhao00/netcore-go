@@ -1,7 +1,6 @@
 package metrics
 
 import (
-	"fmt"
 	"os"
 	"runtime"
 	"sync"
@@ -289,7 +288,7 @@ func (c *SystemCollector) collectRuntimeMetrics() {
 	c.goroutines.Set(float64(runtime.NumGoroutine()))
 	
 	// CGO调用数量
-	c.cgoCalls.Set(float64(runtime.NumCgoCall()))
+	c.cgoCalls.Add(float64(runtime.NumCgoCall()))
 }
 
 // collectMemoryMetrics 收集内存指标
@@ -299,7 +298,7 @@ func (c *SystemCollector) collectMemoryMetrics() {
 	
 	// 内存分配
 	c.memoryAlloc.Set(float64(m.Alloc))
-	c.memoryTotalAlloc.Set(float64(m.TotalAlloc))
+	c.memoryTotalAlloc.Add(float64(m.TotalAlloc))
 	c.memoryHeapAlloc.Set(float64(m.HeapAlloc))
 	c.memoryHeapSys.Set(float64(m.HeapSys))
 	c.memoryStackSys.Set(float64(m.StackSys))
@@ -313,12 +312,12 @@ func (c *SystemCollector) collectGCMetrics() {
 	runtime.ReadMemStats(&m)
 	
 	// GC运行次数
-	c.gcRuns.Set(float64(m.NumGC))
+	c.gcRuns.Add(float64(m.NumGC))
 	
 	// GC暂停时间
 	if m.NumGC > 0 {
 		// 总暂停时间（纳秒转秒）
-		c.gcPauseTotal.Set(float64(m.PauseTotalNs) / 1e9)
+		c.gcPauseTotal.Add(float64(m.PauseTotalNs) / 1e9)
 		
 		// 最后一次暂停时间
 		lastPause := m.PauseNs[(m.NumGC+255)%256]

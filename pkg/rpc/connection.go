@@ -1,4 +1,4 @@
-﻿// Package rpc RPC连接实现
+// Package rpc RPC连接实现
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -94,8 +94,9 @@ func (c *RPCConnection) ReadRequest() (*RPCRequest, error) {
 	}
 	
 	// 设置读取超时
-	if c.server.Config.ReadTimeout > 0 {
-		c.conn.SetReadDeadline(time.Now().Add(c.server.Config.ReadTimeout))
+	config := c.server.BaseServer.GetConfig()
+	if config.ReadTimeout > 0 {
+		c.conn.SetReadDeadline(time.Now().Add(config.ReadTimeout))
 	}
 	
 	// 读取请求长度
@@ -135,8 +136,9 @@ func (c *RPCConnection) WriteResponse(response *RPCResponse) error {
 	}
 	
 	// 设置写入超时
-	if c.server.Config.WriteTimeout > 0 {
-		c.conn.SetWriteDeadline(time.Now().Add(c.server.Config.WriteTimeout))
+	config := c.server.BaseServer.GetConfig()
+	if config.WriteTimeout > 0 {
+		c.conn.SetWriteDeadline(time.Now().Add(config.WriteTimeout))
 	}
 	
 	// 序列化响应

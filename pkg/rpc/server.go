@@ -1,4 +1,4 @@
-﻿// Package rpc RPC协议服务器实现
+// Package rpc RPC协议服务器实现
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -6,16 +6,13 @@ package rpc
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net"
 	"reflect"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/netcore-go/pkg/core"
-	"github.com/netcore-go/pkg/pool"
 )
 
 // RPCServer RPC服务器实现
@@ -26,6 +23,9 @@ type RPCServer struct {
 	registry    ServiceRegistry
 	codec       Codec
 	interceptor Interceptor
+	listener    net.Listener
+	running     bool
+	handler     core.MessageHandler
 }
 
 // ServiceInfo 服务信息
@@ -63,24 +63,26 @@ type RPCResponse struct {
 // NewRPCServer 创建RPC服务器
 func NewRPCServer(opts ...core.ServerOption) *RPCServer {
 	server := &RPCServer{
-		services: make(map[string]*ServiceInfo),
-		codec:    &JSONCodec{},
+		BaseServer: *core.NewBaseServer(),
+		services:   make(map[string]*ServiceInfo),
+		codec:      &JSONCodec{},
 	}
 	
 	// 应用配置选项
 	for _, opt := range opts {
-		opt(&server.BaseServer)
+		opt(server.BaseServer.GetConfig())
 	}
 	
 	// 设置默认配置
-	if server.Config.ReadBufferSize == 0 {
-		server.Config.ReadBufferSize = 4096
+	config := server.BaseServer.GetConfig()
+	if config.ReadBufferSize == 0 {
+		config.ReadBufferSize = 4096
 	}
-	if server.Config.WriteBufferSize == 0 {
-		server.Config.WriteBufferSize = 4096
+	if config.WriteBufferSize == 0 {
+		config.WriteBufferSize = 4096
 	}
-	if server.Config.MaxConnections == 0 {
-		server.Config.MaxConnections = 1000
+	if config.MaxConnections == 0 {
+		config.MaxConnections = 1000
 	}
 	
 	return server
@@ -172,28 +174,29 @@ func (s *RPCServer) Start(addr string) error {
 		return fmt.Errorf("failed to listen on %s: %v", addr, err)
 	}
 	
-	s.Listener = listener
-	s.Running = true
-	s.Stats.StartTime = time.Now()
+	s.listener = listener
+	s.running = true
+	stats := s.BaseServer.GetStats()
+	stats.StartTime = time.Now()
 	
-	// 启动连接池
-	if s.Config.EnableConnectionPool {
-		s.ConnPool = pool.NewConnectionPool(pool.PoolConfig{
-			InitialSize: 10,
-			MaxSize:     s.Config.MaxConnections,
-			IdleTimeout: 5 * time.Minute,
-		})
-	}
+	// 启动连接池（暂时注释掉）
+	// if s.config.EnableConnectionPool {
+	//	s.ConnPool = pool.NewConnectionPool(pool.PoolConfig{
+	//		InitialSize: 10,
+	//		MaxSize:     s.config.MaxConnections,
+	//		IdleTimeout: 5 * time.Minute,
+	//	})
+	// }
 	
-	// 启动内存池
-	if s.Config.EnableMemoryPool {
-		s.MemPool = pool.NewMemoryPool(s.Config.ReadBufferSize, 100)
-	}
+	// 启动内存池（暂时注释掉）
+	// if s.config.EnableMemoryPool {
+	//	s.MemPool = pool.NewMemoryPool(s.config.ReadBufferSize, 100)
+	// }
 	
-	// 启动协程池
-	if s.Config.EnableGoroutinePool {
-		s.GoroutinePool = pool.NewGoroutinePool(1000, 10000)
-	}
+	// 启动协程池（暂时注释掉）
+	// if s.config.EnableGoroutinePool {
+	//	s.GoroutinePool = pool.NewGoroutinePool(1000, 10000)
+	// }
 	
 	go s.acceptLoop()
 	
@@ -202,18 +205,21 @@ func (s *RPCServer) Start(addr string) error {
 
 // acceptLoop 接受连接循环
 func (s *RPCServer) acceptLoop() {
-	for s.Running {
-		conn, err := s.Listener.Accept()
+	for s.running {
+		conn, err := s.listener.Accept()
 		if err != nil {
-			if s.Running {
-				s.Stats.ErrorCount++
-				s.Stats.LastError = err.Error()
+			if s.running {
+				stats := s.BaseServer.GetStats()
+				stats.ErrorCount++
+				stats.LastError = err.Error()
 			}
 			continue
 		}
 		
 		// 检查连接数限制
-		if s.Stats.ActiveConnections >= int64(s.Config.MaxConnections) {
+		stats := s.BaseServer.GetStats()
+		config := s.BaseServer.GetConfig()
+		if stats.ActiveConnections >= int64(config.MaxConnections) {
 			conn.Close()
 			continue
 		}
@@ -221,14 +227,14 @@ func (s *RPCServer) acceptLoop() {
 		// 创建RPC连接
 		rpcConn := NewRPCConnection(conn, s)
 		
-		// 使用协程池处理连接
-		if s.GoroutinePool != nil {
-			s.GoroutinePool.Submit(func() {
-				s.handleConnection(rpcConn)
-			})
-		} else {
+		// 使用协程池处理连接（暂时注释掉）
+		// if s.GoroutinePool != nil {
+		//	s.GoroutinePool.Submit(func() {
+		//		s.handleConnection(rpcConn)
+		//	})
+		// } else {
 			go s.handleConnection(rpcConn)
-		}
+		// }
 	}
 }
 
@@ -236,47 +242,50 @@ func (s *RPCServer) acceptLoop() {
 func (s *RPCServer) handleConnection(conn *RPCConnection) {
 	defer func() {
 		if r := recover(); r != nil {
-			s.Stats.ErrorCount++
-			s.Stats.LastError = fmt.Sprintf("panic: %v", r)
+			stats := s.BaseServer.GetStats()
+			stats.ErrorCount++
+			stats.LastError = fmt.Sprintf("panic: %v", r)
 		}
 		conn.Close()
 	}()
 	
-	s.Stats.ActiveConnections++
-	s.Stats.TotalConnections++
+	stats := s.BaseServer.GetStats()
+	stats.ActiveConnections++
+	stats.TotalConnections++
 	defer func() {
-		s.Stats.ActiveConnections--
+		stats.ActiveConnections--
 	}()
 	
 	// 调用连接处理器
-	if s.Handler != nil {
-		s.Handler.OnConnect(conn)
-		defer s.Handler.OnDisconnect(conn, nil)
+	if s.handler != nil {
+		s.handler.OnConnect(conn)
+		defer s.handler.OnDisconnect(conn, nil)
 	}
 	
 	// 处理RPC请求
 	for {
 		request, err := conn.ReadRequest()
 		if err != nil {
-			if s.Handler != nil {
-				s.Handler.OnDisconnect(conn, err)
+			if s.handler != nil {
+				s.handler.OnDisconnect(conn, err)
 			}
 			break
 		}
 		
-		s.Stats.MessagesReceived++
+		stats := s.BaseServer.GetStats()
+		stats.MessagesReceived++
 		
 		// 处理请求
 		response := s.handleRequest(conn, request)
 		
 		// 发送响应
 		if err := conn.WriteResponse(response); err != nil {
-			s.Stats.ErrorCount++
-			s.Stats.LastError = err.Error()
+			stats.ErrorCount++
+			stats.LastError = err.Error()
 			break
 		}
 		
-		s.Stats.MessagesSent++
+		stats.MessagesSent++
 	}
 }
 
@@ -351,10 +360,10 @@ func (s *RPCServer) handleRequest(conn *RPCConnection, request *RPCRequest) *RPC
 
 // Stop 停止RPC服务器
 func (s *RPCServer) Stop() error {
-	s.Running = false
+	s.running = false
 	
-	if s.Listener != nil {
-		return s.Listener.Close()
+	if s.listener != nil {
+		return s.listener.Close()
 	}
 	
 	return nil
@@ -362,16 +371,11 @@ func (s *RPCServer) Stop() error {
 
 // GetStats 获取服务器统计信息
 func (s *RPCServer) GetStats() *core.ServerStats {
-	return &s.Stats
+	return s.BaseServer.GetStats()
 }
 
 // SetHandler 设置消息处理器
 func (s *RPCServer) SetHandler(handler core.MessageHandler) {
-	s.Handler = handler
-}
-
-// SetMiddleware 设置中间件
-func (s *RPCServer) SetMiddleware(middleware ...core.Middleware) {
-	s.Middlewares = middleware
+	s.handler = handler
 }
 

@@ -1,4 +1,4 @@
-﻿// Package main UDP服务器示例
+// Package main UDP服务器示例
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -9,12 +9,10 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
-	netcore "github.com/netcore-go"
-	"github.com/netcore-go/pkg/core"
+	"github.com/netcore-go/pkg/udp"
 )
 
 // EchoHandler UDP回声处理器

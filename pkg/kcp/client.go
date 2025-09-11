@@ -108,7 +108,10 @@ func (c *KCPClient) Connect() error {
 	case "aes":
 		kcpConn, err = kcp.DialWithOptions(c.address, nil, c.kcpConfig.DataShard, c.kcpConfig.ParityShard)
 	case "none":
-		kcpConn, err = kcp.Dial(c.address)
+		conn, err := kcp.Dial(c.address)
+		if err == nil {
+			kcpConn = conn.(*kcp.UDPSession)
+		}
 	default:
 		kcpConn, err = kcp.DialWithOptions(c.address, nil, c.kcpConfig.DataShard, c.kcpConfig.ParityShard)
 	}

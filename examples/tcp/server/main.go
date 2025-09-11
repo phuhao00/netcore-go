@@ -1,4 +1,4 @@
-﻿// Package main TCP回声服务器示例
+// Package main TCP回声服务器示例
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -9,12 +9,10 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
-	"github.com/netcore-go"
-	"github.com/netcore-go/pkg/core"
+	"github.com/netcore-go/pkg/tcp"
 )
 
 // EchoHandler 回声消息处理器

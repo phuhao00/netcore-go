@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -364,17 +365,6 @@ func PrometheusMiddleware(registry *Registry) func(http.Handler) http.Handler {
 			
 			// 记录指标
 			duration := time.Since(start).Seconds()
-			
-			labels := Labels{
-				"method": r.Method,
-				"path":   r.URL.Path,
-			}
-			
-			counterLabels := Labels{
-				"method": r.Method,
-				"path":   r.URL.Path,
-				"status": fmt.Sprintf("%d", wrapped.statusCode),
-			}
 			
 			// 更新指标
 			requestCounter.Add(1)
