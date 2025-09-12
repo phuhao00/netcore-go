@@ -1,4 +1,4 @@
-﻿// Package logger provides high-performance logging functionality for NetCore-Go
+// Package logger provides high-performance logging functionality for NetCore-Go
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -94,7 +94,8 @@ import (
 	done     chan struct{}
 }
 
-// NewConfigManager `n�?func NewConfigManager(filePath string) *ConfigManager {
+// NewConfigManager 创建新的配置管理器
+func NewConfigManager(filePath string) *ConfigManager {
 	return &ConfigManager{
 		filePath: filePath,
 		config:   getDefaultConfig(),
@@ -103,7 +104,8 @@ import (
 	}
 }
 
-// getDefaultConfig `n`nfunc getDefaultConfig() *DynamicConfig {
+// getDefaultConfig 获取默认配置
+func getDefaultConfig() *DynamicConfig {
 	return &DynamicConfig{
 		Level:          InfoLevel,
 		Formatter:      "text",
@@ -145,7 +147,8 @@ import (
 	}
 }
 
-// LoadConfig `n`nfunc (cm *ConfigManager) LoadConfig() error {
+// LoadConfig 加载配置
+func (cm *ConfigManager) LoadConfig() error {
 	if cm.filePath == "" {
 		return nil // `n
 	}
@@ -179,7 +182,8 @@ import (
 	return nil
 }
 
-// SaveConfig `n`nfunc (cm *ConfigManager) SaveConfig() error {
+// SaveConfig 保存配置
+func (cm *ConfigManager) SaveConfig() error {
 	if cm.filePath == "" {
 		return fmt.Errorf("config file path not set")
 	}
@@ -215,14 +219,16 @@ import (
 	return nil
 }
 
-// GetConfig `n`nfunc (cm *ConfigManager) GetConfig() *DynamicConfig {
+// GetConfig 获取配置
+func (cm *ConfigManager) GetConfig() *DynamicConfig {
 	cm.mu.RLock()
 	config := *cm.config
 	cm.mu.RUnlock()
 	return &config
 }
 
-// UpdateConfig `n`nfunc (cm *ConfigManager) UpdateConfig(updater func(*DynamicConfig)) error {
+// UpdateConfig 更新配置
+func (cm *ConfigManager) UpdateConfig(updater func(*DynamicConfig)) error {
 	cm.mu.Lock()
 	oldConfig := *cm.config
 	newConfig := *cm.config
@@ -248,7 +254,8 @@ import (
 	return nil
 }
 
-// SetCallbacks `n`nfunc (cm *ConfigManager) SetCallbacks(
+// SetCallbacks 设置回调函数
+func (cm *ConfigManager) SetCallbacks(
 	onConfigChange func(*DynamicConfig, *DynamicConfig),
 	onError func(error),
 ) {
@@ -258,7 +265,8 @@ import (
 	cm.mu.Unlock()
 }
 
-// StartWatching `n�?func (cm *ConfigManager) StartWatching() error {
+// StartWatching 开始监控配置文件
+func (cm *ConfigManager) StartWatching() error {
 	if cm.filePath == "" {
 		return fmt.Errorf("config file path not set")
 	}
@@ -271,7 +279,8 @@ import (
 	return nil
 }
 
-// StopWatching `n`nfunc (cm *ConfigManager) StopWatching() {
+// StopWatching 停止监控配置文件
+func (cm *ConfigManager) StopWatching() {
 	if atomic.CompareAndSwapInt32(&cm.watching, 1, 0) {
 		close(cm.stopChan)
 		<-cm.done
@@ -282,7 +291,8 @@ import (
 	}
 }
 
-// watchLoop `n`nfunc (cm *ConfigManager) watchLoop() {
+// watchLoop 监控循环
+func (cm *ConfigManager) watchLoop() {
 	defer close(cm.done)
 	
 	ticker := time.NewTicker(1 * time.Second) // `n�?	defer ticker.Stop()

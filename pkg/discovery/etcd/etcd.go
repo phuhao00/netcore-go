@@ -25,7 +25,7 @@ type EtcdDiscovery struct {
 	mu       sync.RWMutex
 	client   *clientv3.Client
 	config   *EtcdConfig
-	services map[string]*discovery.ServiceInfo
+	services map[string]*discovery.ServiceInstance
 	running  bool
 	ctx      context.Context
 	cancel   context.CancelFunc
@@ -127,7 +127,7 @@ func NewEtcdDiscovery(config *EtcdConfig) (*EtcdDiscovery, error) {
 	return &EtcdDiscovery{
 		client:   client,
 		config:   config,
-		services: make(map[string]*discovery.ServiceInfo),
+		services: make(map[string]*discovery.ServiceInstance),
 		ctx:      ctx,
 		cancel:   cancel,
 		stats:    &EtcdStats{},
@@ -186,7 +186,7 @@ func (e *EtcdDiscovery) Stop() error {
 }
 
 // Register 注册服务
-func (e *EtcdDiscovery) Register(service *discovery.ServiceInfo) error {
+func (e *EtcdDiscovery) Register(service *discovery.ServiceInstance) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -286,7 +286,7 @@ func (e *EtcdDiscovery) Deregister(serviceID string) error {
 }
 
 // Discover 发现服务
-func (e *EtcdDiscovery) Discover(serviceName string) ([]*discovery.ServiceInfo, error) {
+func (e *EtcdDiscovery) Discover(serviceName string) ([]*discovery.ServiceInstance, error {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
@@ -307,9 +307,9 @@ func (e *EtcdDiscovery) Discover(serviceName string) ([]*discovery.ServiceInfo, 
 	e.stats.QueryCount++
 
 	// 解析服务信息
-	var services []*discovery.ServiceInfo
+	var services []*discovery.ServiceInstance
 	for _, kv := range resp.Kvs {
-		var service discovery.ServiceInfo
+		var service discovery.ServiceInstance
 		if err := json.Unmarshal(kv.Value, &service); err != nil {
 			e.stats.ErrorCount++
 			continue
@@ -321,7 +321,7 @@ func (e *EtcdDiscovery) Discover(serviceName string) ([]*discovery.ServiceInfo, 
 }
 
 // Watch 监控服务变化
-func (e *EtcdDiscovery) Watch(serviceName string, callback func([]*discovery.ServiceInfo)) error {
+func (e *EtcdDiscovery) Watch(serviceName string, callback func([]*discovery.ServiceInstance)) error {
 	if !e.running {
 		return fmt.Errorf("etcd discovery is not running")
 	}
@@ -350,7 +350,7 @@ func (e *EtcdDiscovery) Watch(serviceName string, callback func([]*discovery.Ser
 				switch event.Type {
 				case mvccpb.PUT:
 					// 服务注册或更新
-					var service discovery.ServiceInfo
+					var service discovery.ServiceInstance
 					if err := json.Unmarshal(event.Kv.Value, &service); err != nil {
 						continue
 					}
@@ -394,7 +394,7 @@ func (e *EtcdDiscovery) buildServicePrefix(serviceName string) string {
 func (e *EtcdDiscovery) watchServices() {
 	for _, serviceName := range e.config.WatchServices {
 		go func(name string) {
-			e.Watch(name, func(services []*discovery.ServiceInfo) {
+			e.Watch(name, func(services []*discovery.ServiceInstance) {
 				// 更新统计信息
 				e.mu.Lock()
 				e.stats.LastUpdateTime = time.Now().Unix()
@@ -472,7 +472,7 @@ func (e *EtcdDiscovery) Compact(revision int64) error {
 }
 
 // GetAllServices 获取所有服务
-func (e *EtcdDiscovery) GetAllServices() (map[string][]*discovery.ServiceInfo, error) {
+func (e *EtcdDiscovery) GetAllServices() (map[string][]*discovery.ServiceInstance, error) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
@@ -488,9 +488,9 @@ func (e *EtcdDiscovery) GetAllServices() (map[string][]*discovery.ServiceInfo, e
 	}
 
 	// 按服务名分组
-	services := make(map[string][]*discovery.ServiceInfo)
+	services := make(map[string][]*discovery.ServiceInstance)
 	for _, kv := range resp.Kvs {
-		var service discovery.ServiceInfo
+		var service discovery.ServiceInstance
 		if err := json.Unmarshal(kv.Value, &service); err != nil {
 			continue
 		}

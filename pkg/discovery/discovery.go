@@ -7,6 +7,9 @@ import (
 	"time"
 )
 
+// ServiceInfo 服务信息（别名）
+type ServiceInfo = ServiceInstance
+
 // ServiceInstance 服务实例
 type ServiceInstance struct {
 	ID       string            `json:"id"`       // 实例ID

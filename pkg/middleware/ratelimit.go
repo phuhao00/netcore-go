@@ -1,4 +1,4 @@
-﻿// Package middleware 高级限流中间件实现
+// Package middleware 高级限流中间件实现
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/netcore-go/netcore/pkg/core"
+	"github.com/netcore-go/pkg/core"
 )
 
 // RateLimitAlgorithm 限流算法类型

@@ -1,4 +1,4 @@
-﻿// Package logger provides high-performance logging functionality for NetCore-Go
+// Package logger provides high-performance logging functionality for NetCore-Go
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -458,7 +458,8 @@ func (am *ArchiveManager) decompressFile(sourceFile, targetFile string) error {
 	am.mu.Unlock()
 }
 
-// GetStats `n`nfunc (am *ArchiveManager) GetStats() ArchiveStats {
+// GetStats 获取统计信息
+func (am *ArchiveManager) GetStats() ArchiveStats {
 	am.mu.RLock()
 	stats := ArchiveStats{
 		TotalFiles:       atomic.LoadInt64(&am.stats.TotalFiles),
@@ -477,7 +478,8 @@ func (am *ArchiveManager) decompressFile(sourceFile, targetFile string) error {
 	return stats
 }
 
-// ResetStats `n`nfunc (am *ArchiveManager) ResetStats() {
+// ResetStats 重置统计信息
+func (am *ArchiveManager) ResetStats() {
 	atomic.StoreInt64(&am.stats.TotalFiles, 0)
 	atomic.StoreInt64(&am.stats.CompressedFiles, 0)
 	atomic.StoreInt64(&am.stats.ArchivedFiles, 0)
@@ -493,12 +495,14 @@ func (am *ArchiveManager) decompressFile(sourceFile, targetFile string) error {
 	am.mu.Unlock()
 }
 
-// GzipCompressor Gzip`n�?type GzipCompressor struct {
+// GzipCompressor Gzip压缩器
+type GzipCompressor struct {
 	name  string
 	level int
 }
 
-// NewGzipCompressor `nGzip`n�?func NewGzipCompressor(level int) *GzipCompressor {
+// NewGzipCompressor 创建新的Gzip压缩器
+func NewGzipCompressor(level int) *GzipCompressor {
 	if level < gzip.DefaultCompression || level > gzip.BestCompression {
 		level = gzip.DefaultCompression
 	}
@@ -509,7 +513,8 @@ func (am *ArchiveManager) decompressFile(sourceFile, targetFile string) error {
 	}
 }
 
-// Compress `n`nfunc (c *GzipCompressor) Compress(src, dst string) error {
+// Compress 压缩文件
+func (c *GzipCompressor) Compress(src, dst string) error {
 	srcFile, err := os.Open(src)
 	if err != nil {
 		return err
@@ -532,7 +537,8 @@ func (am *ArchiveManager) decompressFile(sourceFile, targetFile string) error {
 	return err
 }
 
-// Decompress `n`nfunc (c *GzipCompressor) Decompress(src, dst string) error {
+// Decompress 解压文件
+func (c *GzipCompressor) Decompress(src, dst string) error {
 	srcFile, err := os.Open(src)
 	if err != nil {
 		return err
@@ -555,97 +561,112 @@ func (am *ArchiveManager) decompressFile(sourceFile, targetFile string) error {
 	return err
 }
 
-// GetName `n�?func (c *GzipCompressor) GetName() string {
+// GetName 获取压缩器名称
+func (c *GzipCompressor) GetName() string {
 	return c.name
 }
 
-// GetExtension `n�?func (c *GzipCompressor) GetExtension() string {
+// GetExtension 获取文件扩展名
+func (c *GzipCompressor) GetExtension() string {
 	return ".gz"
 }
 
-// GetCompressionRatio `n�?func (c *GzipCompressor) GetCompressionRatio(originalSize, compressedSize int64) float64 {
+// GetCompressionRatio 获取压缩比
+func (c *GzipCompressor) GetCompressionRatio(originalSize, compressedSize int64) float64 {
 	if originalSize == 0 {
 		return 0
 	}
 	return float64(compressedSize) / float64(originalSize)
 }
 
-// LZ4Compressor LZ4`n（`n）
+// LZ4Compressor LZ4压缩器（模拟实现）
 type LZ4Compressor struct {
 	name string
 }
 
-// NewLZ4Compressor `nLZ4`n�?func NewLZ4Compressor() *LZ4Compressor {
+// NewLZ4Compressor 创建新的LZ4压缩器
+func NewLZ4Compressor() *LZ4Compressor {
 	return &LZ4Compressor{
 		name: "lz4",
 	}
 }
 
-// Compress `n（`n，`nLZ4`n）
+// Compress 压缩文件（模拟实现，实际使用LZ4库）
 func (c *LZ4Compressor) Compress(src, dst string) error {
-	// `nLZ4`n�?	// `n，`ngzip`n
+	// 注意：这里是LZ4的模拟实现
+	// 实际项目中，应该使用真正的LZ4库
 	gzipCompressor := NewGzipCompressor(gzip.DefaultCompression)
 	return gzipCompressor.Compress(src, dst+".gz")
 }
 
-// Decompress `n（`n）
+// Decompress 解压文件（模拟实现）
 func (c *LZ4Compressor) Decompress(src, dst string) error {
-	// `nLZ4`n�?	// `n，`ngzip`n
+	// 注意：这里是LZ4的模拟实现
+	// 实际项目中，应该使用真正的LZ4库
 	gzipCompressor := NewGzipCompressor(gzip.DefaultCompression)
 	return gzipCompressor.Decompress(src, dst)
 }
 
-// GetName `n�?func (c *LZ4Compressor) GetName() string {
+// GetName 获取压缩器名称
+func (c *LZ4Compressor) GetName() string {
 	return c.name
 }
 
-// GetExtension `n�?func (c *LZ4Compressor) GetExtension() string {
+// GetExtension 获取文件扩展名
+func (c *LZ4Compressor) GetExtension() string {
 	return ".lz4"
 }
 
-// GetCompressionRatio `n�?func (c *LZ4Compressor) GetCompressionRatio(originalSize, compressedSize int64) float64 {
+// GetCompressionRatio 获取压缩比
+func (c *LZ4Compressor) GetCompressionRatio(originalSize, compressedSize int64) float64 {
 	if originalSize == 0 {
 		return 0
 	}
 	return float64(compressedSize) / float64(originalSize)
 }
 
-// ZstdCompressor Zstd`n（`n）
+// ZstdCompressor Zstd压缩器（模拟实现）
 type ZstdCompressor struct {
 	name  string
 	level int
 }
 
-// NewZstdCompressor `nZstd`n�?func NewZstdCompressor(level int) *ZstdCompressor {
+// NewZstdCompressor 创建新的Zstd压缩器
+func NewZstdCompressor(level int) *ZstdCompressor {
 	return &ZstdCompressor{
 		name:  "zstd",
 		level: level,
 	}
 }
 
-// Compress `n（`n，`nZstd`n）
+// Compress 压缩文件（模拟实现，实际使用Zstd库）
 func (c *ZstdCompressor) Compress(src, dst string) error {
-	// `nZstd`n�?	// `n，`ngzip`n
+	// 注意：这里是Zstd的模拟实现
+	// 实际项目中，应该使用真正的Zstd库
 	gzipCompressor := NewGzipCompressor(c.level)
 	return gzipCompressor.Compress(src, dst+".gz")
 }
 
-// Decompress `n（`n）
+// Decompress 解压文件（模拟实现）
 func (c *ZstdCompressor) Decompress(src, dst string) error {
-	// `nZstd`n�?	// `n，`ngzip`n
+	// 注意：这里是Zstd的模拟实现
+	// 实际项目中，应该使用真正的Zstd库
 	gzipCompressor := NewGzipCompressor(c.level)
 	return gzipCompressor.Decompress(src, dst)
 }
 
-// GetName `n�?func (c *ZstdCompressor) GetName() string {
+// GetName 获取压缩器名称
+func (c *ZstdCompressor) GetName() string {
 	return c.name
 }
 
-// GetExtension `n�?func (c *ZstdCompressor) GetExtension() string {
+// GetExtension 获取文件扩展名
+func (c *ZstdCompressor) GetExtension() string {
 	return ".zst"
 }
 
-// GetCompressionRatio `n�?func (c *ZstdCompressor) GetCompressionRatio(originalSize, compressedSize int64) float64 {
+// GetCompressionRatio 获取压缩比
+func (c *ZstdCompressor) GetCompressionRatio(originalSize, compressedSize int64) float64 {
 	if originalSize == 0 {
 		return 0
 	}

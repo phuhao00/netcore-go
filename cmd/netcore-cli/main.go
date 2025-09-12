@@ -487,65 +487,7 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 	}
 }
 
-func generateHandler(name string) error {
-	filename := fmt.Sprintf("internal/handlers/%s_handler.go", strings.ToLower(name))
-	data := map[string]interface{}{
-		"Name":      name,
-		"LowerName": strings.ToLower(name),
-		"Package":   "handlers",
-	}
-
-	return generateFromTemplate(filename, handlerTemplate, data)
-}
-
-func generateModel(name string, cmd *cobra.Command) error {
-	filename := fmt.Sprintf("internal/models/%s.go", strings.ToLower(name))
-	fields, _ := cmd.Flags().GetStringSlice("fields")
-	crud, _ := cmd.Flags().GetBool("crud")
-
-	data := map[string]interface{}{
-		"Name":      name,
-		"LowerName": strings.ToLower(name),
-		"Package":   "models",
-		"Fields":    fields,
-		"CRUD":      crud,
-	}
-
-	return generateFromTemplate(filename, modelTemplate, data)
-}
-
-func generateService(name string) error {
-	filename := fmt.Sprintf("internal/services/%s_service.go", strings.ToLower(name))
-	data := map[string]interface{}{
-		"Name":      name,
-		"LowerName": strings.ToLower(name),
-		"Package":   "services",
-	}
-
-	return generateFromTemplate(filename, serviceTemplate, data)
-}
-
-func generateMiddleware(name string) error {
-	filename := fmt.Sprintf("internal/middleware/%s.go", strings.ToLower(name))
-	data := map[string]interface{}{
-		"Name":      name,
-		"LowerName": strings.ToLower(name),
-		"Package":   "middleware",
-	}
-
-	return generateFromTemplate(filename, middlewareTemplate, data)
-}
-
-func generateTest(name string) error {
-	filename := fmt.Sprintf("tests/%s_test.go", strings.ToLower(name))
-	data := map[string]interface{}{
-		"Name":      name,
-		"LowerName": strings.ToLower(name),
-		"Package":   "tests",
-	}
-
-	return generateFromTemplate(filename, testTemplate, data)
-}
+// Generate functions are implemented in generate.go
 
 func generateFromTemplate(filename, templateStr string, data interface{}) error {
 	tmpl, err := template.New(filename).Parse(templateStr)
@@ -680,37 +622,7 @@ func updateTemplate(cmd *cobra.Command) error {
 	return nil
 }
 
-// dev 命令 - 开发服务器
-var devCmd = &cobra.Command{
-	Use:   "dev",
-	Short: "Start development server with hot reload",
-	Long:  `Start development server with hot reload functionality.`,
-	RunE:  runDev,
-}
-
-func init() {
-	devCmd.Flags().IntP("port", "p", 8080, "server port")
-	devCmd.Flags().BoolP("watch", "w", true, "enable file watching")
-	devCmd.Flags().StringSlice("ignore", []string{".git", "node_modules", "vendor"}, "ignore patterns")
-}
-
-func runDev(cmd *cobra.Command, args []string) error {
-	port, _ := cmd.Flags().GetInt("port")
-	watch, _ := cmd.Flags().GetBool("watch")
-	ignore, _ := cmd.Flags().GetStringSlice("ignore")
-
-	fmt.Printf("🚀 Starting development server on port %d\n", port)
-	if watch {
-		fmt.Println("📁 File watching enabled")
-		fmt.Printf("🚫 Ignoring: %v\n", ignore)
-	}
-
-	// 这里应该实现实际的开发服务器逻辑
-	fmt.Println("Development server functionality not fully implemented yet")
-	fmt.Println("Please run: go run cmd/main.go")
-
-	return nil
-}
+// Dev command is implemented in dev.go
 
 // build 命令 - 构建项目
 var buildCmd = &cobra.Command{
@@ -749,41 +661,4 @@ func runBuild(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// deploy 命令 - 部署项目
-var deployCmd = &cobra.Command{
-	Use:   "deploy [target]",
-	Short: "Deploy the project",
-	Long:  `Deploy the project to various targets.`,
-	Args:  cobra.ExactArgs(1),
-	RunE:  runDeploy,
-}
-
-func init() {
-	deployCmd.Flags().StringP("config", "c", "deploy.yaml", "deployment configuration file")
-	deployCmd.Flags().BoolP("dry-run", "n", false, "dry run mode")
-}
-
-func runDeploy(cmd *cobra.Command, args []string) error {
-	target := args[0]
-	config, _ := cmd.Flags().GetString("config")
-	dryRun, _ := cmd.Flags().GetBool("dry-run")
-
-	fmt.Printf("🚀 Deploying to: %s\n", target)
-	fmt.Printf("📋 Using config: %s\n", config)
-	if dryRun {
-		fmt.Println("🧪 Dry run mode enabled")
-	}
-
-	switch target {
-	case "docker":
-		fmt.Println("Docker deployment functionality not implemented yet")
-	case "kubernetes":
-		fmt.Println("Kubernetes deployment functionality not implemented yet")
-	case "serverless":
-		fmt.Println("Serverless deployment functionality not implemented yet")
-	default:
-		return fmt.Errorf("unknown deployment target: %s", target)
-	}
-
-	return nil
-}
+// Deploy command is implemented in deploy.go

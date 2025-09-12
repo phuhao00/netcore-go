@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/netcore-go/pkg/core"
-	"github.com/netcore-go/pkg/http/server"
+	"github.com/netcore-go/pkg/http"
 	"github.com/netcore-go/pkg/middleware"
 	"github.com/netcore-go/pkg/database"
 	"gorm.io/gorm"

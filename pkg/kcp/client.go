@@ -1,4 +1,4 @@
-﻿// Package kcp KCP客户端实现
+// Package kcp KCP客户端实现
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -11,7 +11,7 @@ import (
 
 	"github.com/xtaci/kcp-go/v5"
 
-	"github.com/netcore-go/netcore/pkg/core"
+	"github.com/netcore-go/pkg/core"
 )
 
 // KCPClient KCP客户端

@@ -455,10 +455,10 @@ func (l *Logger) getCaller() (string, int, string) {
 
 		// 跳过日志包内的调用
 		if !strings.Contains(file, "logger") && !strings.Contains(file, "logging") {
-			func := runtime.FuncForPC(pc)
+			fn := runtime.FuncForPC(pc)
 			funcName := ""
-			if func != nil {
-				funcName = func.Name()
+			if fn != nil {
+				funcName = fn.Name()
 			}
 			return filepath.Base(file), line, funcName
 		}

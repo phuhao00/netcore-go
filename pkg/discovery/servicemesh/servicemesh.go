@@ -43,7 +43,7 @@ type ServiceMeshDiscovery struct {
 	mu       sync.RWMutex
 	config   *ServiceMeshConfig
 	provider ServiceMeshProvider
-	services map[string]*discovery.ServiceInfo
+	services map[string]*discovery.ServiceInstance
 	running  bool
 	ctx      context.Context
 	cancel   context.CancelFunc
@@ -180,10 +180,10 @@ type ServiceMeshStats struct {
 type ServiceMeshProvider interface {
 	Connect(config *ServiceMeshConfig) error
 	Disconnect() error
-	DiscoverServices(namespace string) ([]*discovery.ServiceInfo, error)
-	RegisterService(service *discovery.ServiceInfo) error
+	DiscoverServices(namespace string) ([]*discovery.ServiceInstance, error)
+	RegisterService(service *discovery.ServiceInstance) error
 	DeregisterService(serviceID string) error
-	WatchServices(callback func([]*discovery.ServiceInfo)) error
+	WatchServices(callback func([]*discovery.ServiceInstance)) error
 	GetStats() *ServiceMeshStats
 	ApplyTrafficPolicy(serviceName string, policy *TrafficPolicy) error
 	ApplyCircuitBreaker(serviceName string, breaker *CircuitBreaker) error
@@ -254,7 +254,7 @@ func NewServiceMeshDiscovery(config *ServiceMeshConfig) (*ServiceMeshDiscovery, 
 	return &ServiceMeshDiscovery{
 		config:   config,
 		provider: provider,
-		services: make(map[string]*discovery.ServiceInfo),
+		services: make(map[string]*discovery.ServiceInstance),
 		ctx:      ctx,
 		cancel:   cancel,
 		stats:    &ServiceMeshStats{},
@@ -321,7 +321,7 @@ func (s *ServiceMeshDiscovery) Stop() error {
 }
 
 // Register 注册服务
-func (s *ServiceMeshDiscovery) Register(service *discovery.ServiceInfo) error {
+func (s *ServiceMeshDiscovery) Register(service *discovery.ServiceInstance) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -382,7 +382,7 @@ func (s *ServiceMeshDiscovery) Deregister(serviceID string) error {
 }
 
 // Discover 发现服务
-func (s *ServiceMeshDiscovery) Discover(serviceName string) ([]*discovery.ServiceInfo, error) {
+func (s *ServiceMeshDiscovery) Discover(serviceName string) ([]*discovery.ServiceInstance, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -397,17 +397,17 @@ func (s *ServiceMeshDiscovery) Discover(serviceName string) ([]*discovery.Servic
 	}
 
 	// 过滤服务
-	var result []*discovery.ServiceInfo
+	var result []*discovery.ServiceInstance
 	for _, service := range services {
 		if serviceName == "" || service.Name == serviceName {
 			// 添加服务网格特定元数据
-			if service.Metadata == nil {
-				service.Metadata = make(map[string]string)
+			if service.Meta == nil {
+				service.Meta = make(map[string]string)
 			}
-			service.Metadata["mesh.type"] = s.config.MeshType.String()
-			service.Metadata["mesh.namespace"] = s.config.Namespace
-			service.Metadata["mesh.cluster"] = s.config.ClusterName
-			service.Metadata["mesh.mtls"] = fmt.Sprintf("%t", s.config.MTLSEnabled)
+			service.Meta["mesh.type"] = s.config.MeshType.String()
+			service.Meta["mesh.namespace"] = s.config.Namespace
+			service.Meta["mesh.cluster"] = s.config.ClusterName
+			service.Meta["mesh.mtls"] = fmt.Sprintf("%t", s.config.MTLSEnabled)
 
 			result = append(result, service)
 		}
@@ -417,15 +417,15 @@ func (s *ServiceMeshDiscovery) Discover(serviceName string) ([]*discovery.Servic
 }
 
 // Watch 监控服务变化
-func (s *ServiceMeshDiscovery) Watch(serviceName string, callback func([]*discovery.ServiceInfo)) error {
+func (s *ServiceMeshDiscovery) Watch(serviceName string, callback func([]*discovery.ServiceInstance)) error {
 	if !s.running {
 		return fmt.Errorf("service mesh discovery is not running")
 	}
 
 	// 使用提供者的监控功能
-	return s.provider.WatchServices(func(services []*discovery.ServiceInfo) {
+	return s.provider.WatchServices(func(services []*discovery.ServiceInstance) {
 		// 过滤服务
-		var filtered []*discovery.ServiceInfo
+		var filtered []*discovery.ServiceInstance
 		for _, service := range services {
 			if serviceName == "" || service.Name == serviceName {
 				filtered = append(filtered, service)
@@ -437,7 +437,7 @@ func (s *ServiceMeshDiscovery) Watch(serviceName string, callback func([]*discov
 
 // watchServices 监控服务
 func (s *ServiceMeshDiscovery) watchServices() {
-	s.provider.WatchServices(func(services []*discovery.ServiceInfo) {
+	s.provider.WatchServices(func(services []*discovery.ServiceInstance) {
 		// 更新统计信息
 		s.mu.Lock()
 		s.stats.LastUpdateTime = time.Now().Unix()
@@ -446,7 +446,7 @@ func (s *ServiceMeshDiscovery) watchServices() {
 		// 计算健康服务数
 		healthyCount := int64(0)
 		for _, service := range services {
-			if service.Healthy {
+			if service.Health == discovery.Healthy {
 				healthyCount++
 			}
 		}
@@ -550,12 +550,12 @@ func (i *IstioProvider) Disconnect() error {
 	return nil
 }
 
-func (i *IstioProvider) DiscoverServices(namespace string) ([]*discovery.ServiceInfo, error) {
+func (i *IstioProvider) DiscoverServices(namespace string) ([]*discovery.ServiceInstance, error) {
 	// TODO: 实现Istio服务发现逻辑
 	return nil, nil
 }
 
-func (i *IstioProvider) RegisterService(service *discovery.ServiceInfo) error {
+func (i *IstioProvider) RegisterService(service *discovery.ServiceInstance) error {
 	// TODO: 实现Istio服务注册逻辑
 	return nil
 }
@@ -565,7 +565,7 @@ func (i *IstioProvider) DeregisterService(serviceID string) error {
 	return nil
 }
 
-func (i *IstioProvider) WatchServices(callback func([]*discovery.ServiceInfo)) error {
+func (i *IstioProvider) WatchServices(callback func([]*discovery.ServiceInstance)) error {
 	// TODO: 实现Istio服务监控逻辑
 	return nil
 }
@@ -600,10 +600,10 @@ func NewLinkerdProvider() *LinkerdProvider {
 // 实现ServiceMeshProvider接口的所有方法...
 func (l *LinkerdProvider) Connect(config *ServiceMeshConfig) error { return nil }
 func (l *LinkerdProvider) Disconnect() error { return nil }
-func (l *LinkerdProvider) DiscoverServices(namespace string) ([]*discovery.ServiceInfo, error) { return nil, nil }
-func (l *LinkerdProvider) RegisterService(service *discovery.ServiceInfo) error { return nil }
+func (l *LinkerdProvider) DiscoverServices(namespace string) ([]*discovery.ServiceInstance, error) { return nil, nil }
+func (l *LinkerdProvider) RegisterService(service *discovery.ServiceInstance) error { return nil }
 func (l *LinkerdProvider) DeregisterService(serviceID string) error { return nil }
-func (l *LinkerdProvider) WatchServices(callback func([]*discovery.ServiceInfo)) error { return nil }
+func (l *LinkerdProvider) WatchServices(callback func([]*discovery.ServiceInstance)) error { return nil }
 func (l *LinkerdProvider) GetStats() *ServiceMeshStats { return &ServiceMeshStats{} }
 func (l *LinkerdProvider) ApplyTrafficPolicy(serviceName string, policy *TrafficPolicy) error { return nil }
 func (l *LinkerdProvider) ApplyCircuitBreaker(serviceName string, breaker *CircuitBreaker) error { return nil }
@@ -619,10 +619,10 @@ func NewConsulMeshProvider() *ConsulMeshProvider {
 // 实现ServiceMeshProvider接口的所有方法...
 func (c *ConsulMeshProvider) Connect(config *ServiceMeshConfig) error { return nil }
 func (c *ConsulMeshProvider) Disconnect() error { return nil }
-func (c *ConsulMeshProvider) DiscoverServices(namespace string) ([]*discovery.ServiceInfo, error) { return nil, nil }
-func (c *ConsulMeshProvider) RegisterService(service *discovery.ServiceInfo) error { return nil }
+func (c *ConsulMeshProvider) DiscoverServices(namespace string) ([]*discovery.ServiceInstance, error) { return nil, nil }
+func (c *ConsulMeshProvider) RegisterService(service *discovery.ServiceInstance) error { return nil }
 func (c *ConsulMeshProvider) DeregisterService(serviceID string) error { return nil }
-func (c *ConsulMeshProvider) WatchServices(callback func([]*discovery.ServiceInfo)) error { return nil }
+func (c *ConsulMeshProvider) WatchServices(callback func([]*discovery.ServiceInstance)) error { return nil }
 func (c *ConsulMeshProvider) GetStats() *ServiceMeshStats { return &ServiceMeshStats{} }
 func (c *ConsulMeshProvider) ApplyTrafficPolicy(serviceName string, policy *TrafficPolicy) error { return nil }
 func (c *ConsulMeshProvider) ApplyCircuitBreaker(serviceName string, breaker *CircuitBreaker) error { return nil }
@@ -638,10 +638,10 @@ func NewEnvoyProvider() *EnvoyProvider {
 // 实现ServiceMeshProvider接口的所有方法...
 func (e *EnvoyProvider) Connect(config *ServiceMeshConfig) error { return nil }
 func (e *EnvoyProvider) Disconnect() error { return nil }
-func (e *EnvoyProvider) DiscoverServices(namespace string) ([]*discovery.ServiceInfo, error) { return nil, nil }
-func (e *EnvoyProvider) RegisterService(service *discovery.ServiceInfo) error { return nil }
+func (e *EnvoyProvider) DiscoverServices(namespace string) ([]*discovery.ServiceInstance, error) { return nil, nil }
+func (e *EnvoyProvider) RegisterService(service *discovery.ServiceInstance) error { return nil }
 func (e *EnvoyProvider) DeregisterService(serviceID string) error { return nil }
-func (e *EnvoyProvider) WatchServices(callback func([]*discovery.ServiceInfo)) error { return nil }
+func (e *EnvoyProvider) WatchServices(callback func([]*discovery.ServiceInstance)) error { return nil }
 func (e *EnvoyProvider) GetStats() *ServiceMeshStats { return &ServiceMeshStats{} }
 func (e *EnvoyProvider) ApplyTrafficPolicy(serviceName string, policy *TrafficPolicy) error { return nil }
 func (e *EnvoyProvider) ApplyCircuitBreaker(serviceName string, breaker *CircuitBreaker) error { return nil }

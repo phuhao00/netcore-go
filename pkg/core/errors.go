@@ -49,7 +49,6 @@ const (
 
 	// 服务发现相关错误代码
 	ErrCodeServiceNotFound    ErrorCode = "SERVICE_NOT_FOUND"
-	ErrCodeServiceUnavailable ErrorCode = "SERVICE_UNAVAILABLE"
 	ErrCodeDiscoveryFailed    ErrorCode = "DISCOVERY_FAILED"
 	ErrCodeRegistrationFailed ErrorCode = "REGISTRATION_FAILED"
 

@@ -7,17 +7,50 @@ package kubernetes
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/netcore-go/pkg/discovery"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Mock Kubernetes types for when k8s dependencies are not available
 type MockKubernetesInterface interface {
-	GetServices(namespace string) ([]*MockService, error)
-	WatchServices(namespace string) (MockWatcher, error)
+	CoreV1() MockCoreV1Interface
+}
+
+// MockCoreV1Interface Mock CoreV1接口
+type MockCoreV1Interface interface {
+	Services(namespace string) MockServiceInterface
+	Endpoints(namespace string) MockEndpointsInterface
+	Namespaces() MockNamespaceInterface
+	Pods(namespace string) MockPodInterface
+}
+
+// MockServiceInterface Mock Service接口
+type MockServiceInterface interface {
+	List(ctx context.Context, opts metav1.ListOptions) (*corev1.ServiceList, error)
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*corev1.Service, error)
+	Create(ctx context.Context, service *corev1.Service, opts metav1.CreateOptions) (*corev1.Service, error)
+	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
+	Watch(ctx context.Context, opts metav1.ListOptions) (MockWatcher, error)
+}
+
+// MockEndpointsInterface Mock Endpoints接口
+type MockEndpointsInterface interface {
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*corev1.Endpoints, error)
+	Watch(ctx context.Context, opts metav1.ListOptions) (MockWatcher, error)
+}
+
+// MockNamespaceInterface Mock Namespace接口
+type MockNamespaceInterface interface {
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*corev1.Namespace, error)
+}
+
+// MockPodInterface Mock Pod接口
+type MockPodInterface interface {
+	Watch(ctx context.Context, opts metav1.ListOptions) (MockWatcher, error)
 }
 
 type MockService struct {
@@ -44,24 +77,123 @@ type MockWatchEvent struct {
 	Object *MockService
 }
 
-type mockKubernetesClient struct{}
+type mockKubernetesClient struct{
+	coreV1 *mockCoreV1Client
+}
 
-func (m *mockKubernetesClient) GetServices(namespace string) ([]*MockService, error) {
-	// Return mock services for demonstration
-	return []*MockService{
-		{
-			Name:      "example-service",
-			Namespace: namespace,
-			ClusterIP: "10.0.0.1",
-			Ports: []MockServicePort{
-				{Name: "http", Port: 80, Protocol: "TCP"},
+func (m *mockKubernetesClient) CoreV1() MockCoreV1Interface {
+	if m.coreV1 == nil {
+		m.coreV1 = &mockCoreV1Client{}
+	}
+	return m.coreV1
+}
+
+type mockCoreV1Client struct{}
+
+func (m *mockCoreV1Client) Services(namespace string) MockServiceInterface {
+	return &mockServiceClient{namespace: namespace}
+}
+
+func (m *mockCoreV1Client) Endpoints(namespace string) MockEndpointsInterface {
+	return &mockEndpointsClient{namespace: namespace}
+}
+
+func (m *mockCoreV1Client) Namespaces() MockNamespaceInterface {
+	return &mockNamespaceClient{}
+}
+
+func (m *mockCoreV1Client) Pods(namespace string) MockPodInterface {
+	return &mockPodClient{namespace: namespace}
+}
+
+type mockServiceClient struct {
+	namespace string
+}
+
+func (m *mockServiceClient) List(ctx context.Context, opts metav1.ListOptions) (*corev1.ServiceList, error) {
+	return &corev1.ServiceList{
+		Items: []corev1.Service{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "example-service",
+					Namespace: m.namespace,
+					Labels:    map[string]string{"app": "example"},
+				},
+				Spec: corev1.ServiceSpec{
+					ClusterIP: "10.0.0.1",
+					Ports: []corev1.ServicePort{
+						{Name: "http", Port: 80, Protocol: corev1.ProtocolTCP},
+					},
+					Type: corev1.ServiceTypeClusterIP,
+				},
 			},
-			Labels: map[string]string{"app": "example"},
 		},
 	}, nil
 }
 
-func (m *mockKubernetesClient) WatchServices(namespace string) (MockWatcher, error) {
+func (m *mockServiceClient) Get(ctx context.Context, name string, opts metav1.GetOptions) (*corev1.Service, error) {
+	return &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: m.namespace,
+		},
+	}, nil
+}
+
+func (m *mockServiceClient) Create(ctx context.Context, service *corev1.Service, opts metav1.CreateOptions) (*corev1.Service, error) {
+	return service, nil
+}
+
+func (m *mockServiceClient) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
+	return nil
+}
+
+func (m *mockServiceClient) Watch(ctx context.Context, opts metav1.ListOptions) (MockWatcher, error) {
+	return &mockWatcher{}, nil
+}
+
+type mockEndpointsClient struct {
+	namespace string
+}
+
+func (m *mockEndpointsClient) Get(ctx context.Context, name string, opts metav1.GetOptions) (*corev1.Endpoints, error) {
+	return &corev1.Endpoints{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: m.namespace,
+		},
+		Subsets: []corev1.EndpointSubset{
+			{
+				Addresses: []corev1.EndpointAddress{
+					{IP: "10.0.0.1"},
+				},
+				Ports: []corev1.EndpointPort{
+					{Name: "http", Port: 80, Protocol: corev1.ProtocolTCP},
+				},
+			},
+		},
+	}, nil
+}
+
+func (m *mockEndpointsClient) Watch(ctx context.Context, opts metav1.ListOptions) (MockWatcher, error) {
+	return &mockWatcher{}, nil
+}
+
+type mockNamespaceClient struct{}
+
+func (m *mockNamespaceClient) Get(ctx context.Context, name string, opts metav1.GetOptions) (*corev1.Namespace, error) {
+	return &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+	}, nil
+}
+
+type mockPodClient struct {
+	namespace string
+}
+
+func (m *mockPodClient) Watch(ctx context.Context, opts metav1.ListOptions) (MockWatcher, error) {
 	return &mockWatcher{}, nil
 }
 
@@ -87,7 +219,7 @@ type KubernetesDiscovery struct {
 	mu        sync.RWMutex
 	client    MockKubernetesInterface
 	config    *KubernetesConfig
-	services  map[string]*discovery.ServiceInfo
+	services  map[string]*discovery.ServiceInstance
 	running   bool
 	ctx       context.Context
 	cancel    context.CancelFunc
@@ -181,7 +313,7 @@ func NewKubernetesDiscovery(config *KubernetesConfig) (*KubernetesDiscovery, err
 	return &KubernetesDiscovery{
 		client:   client,
 		config:   config,
-		services: make(map[string]*discovery.ServiceInfo),
+		services: make(map[string]*discovery.ServiceInstance),
 		ctx:      ctx,
 		cancel:   cancel,
 		stats:    &KubernetesStats{},
@@ -252,7 +384,7 @@ func (k *KubernetesDiscovery) Stop() error {
 }
 
 // Register 注册服务（Kubernetes中通过Service资源实现）
-func (k *KubernetesDiscovery) Register(service *discovery.ServiceInfo) error {
+func (k *KubernetesDiscovery) Register(service *discovery.ServiceInstance) error {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 
@@ -267,7 +399,7 @@ func (k *KubernetesDiscovery) Register(service *discovery.ServiceInfo) error {
 			Name:        service.Name,
 			Namespace:   k.config.Namespace,
 			Labels:      convertTagsToLabels(service.Tags),
-			Annotations: service.Metadata,
+			Annotations: service.Meta,
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: map[string]string{
@@ -325,7 +457,7 @@ func (k *KubernetesDiscovery) Deregister(serviceID string) error {
 }
 
 // Discover 发现服务
-func (k *KubernetesDiscovery) Discover(serviceName string) ([]*discovery.ServiceInfo, error) {
+func (k *KubernetesDiscovery) Discover(serviceName string) ([]*discovery.ServiceInstance, error) {
 	k.mu.RLock()
 	defer k.mu.RUnlock()
 
@@ -352,7 +484,7 @@ func (k *KubernetesDiscovery) Discover(serviceName string) ([]*discovery.Service
 	k.stats.QueryCount++
 
 	// 转换为服务信息
-	var result []*discovery.ServiceInfo
+	var result []*discovery.ServiceInstance
 	for _, svc := range services.Items {
 		// 过滤服务类型
 		if !k.isServiceTypeAllowed(string(svc.Spec.Type)) {
@@ -367,23 +499,28 @@ func (k *KubernetesDiscovery) Discover(serviceName string) ([]*discovery.Service
 
 		// 为每个端点创建服务信息
 		for _, endpoint := range endpoints {
-			serviceInfo := &discovery.ServiceInfo{
+			serviceInfo := &discovery.ServiceInstance{
 				ID:       fmt.Sprintf("%s-%s", svc.Name, endpoint.IP),
 				Name:     svc.Name,
 				Address:  endpoint.IP,
 				Port:     endpoint.Port,
 				Tags:     convertLabelsToTags(svc.Labels),
-				Metadata: svc.Annotations,
-				Healthy:  endpoint.Ready,
+				Meta: svc.Annotations,
+				Health:  func() discovery.HealthStatus {
+					if endpoint.Ready {
+						return discovery.Healthy
+					}
+					return discovery.Unhealthy
+				}(),
 			}
 
 			// 添加Kubernetes特定元数据
-			if serviceInfo.Metadata == nil {
-				serviceInfo.Metadata = make(map[string]string)
+			if serviceInfo.Meta == nil {
+				serviceInfo.Meta = make(map[string]string)
 			}
-			serviceInfo.Metadata["kubernetes.namespace"] = svc.Namespace
-			serviceInfo.Metadata["kubernetes.service_type"] = string(svc.Spec.Type)
-			serviceInfo.Metadata["kubernetes.cluster_ip"] = svc.Spec.ClusterIP
+			serviceInfo.Meta["kubernetes.namespace"] = svc.Namespace
+			serviceInfo.Meta["kubernetes.service_type"] = string(svc.Spec.Type)
+			serviceInfo.Meta["kubernetes.cluster_ip"] = svc.Spec.ClusterIP
 
 			result = append(result, serviceInfo)
 		}
@@ -393,7 +530,7 @@ func (k *KubernetesDiscovery) Discover(serviceName string) ([]*discovery.Service
 }
 
 // Watch 监控服务变化
-func (k *KubernetesDiscovery) Watch(serviceName string, callback func([]*discovery.ServiceInfo)) error {
+func (k *KubernetesDiscovery) Watch(serviceName string, callback func([]*discovery.ServiceInstance)) error {
 	if !k.running {
 		return fmt.Errorf("Kubernetes discovery is not running")
 	}
@@ -421,20 +558,17 @@ func (k *KubernetesDiscovery) Watch(serviceName string, callback func([]*discove
 		k.watchers[serviceName] = watcher
 		k.mu.Unlock()
 
-		// 处理监控事件
-		for event := range watcher.ResultChan() {
+		// Simple mock implementation - just call callback periodically
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+
+		for {
 			select {
 			case <-k.ctx.Done():
 				return
-			default:
-			}
-
-			k.mu.Lock()
-			k.stats.WatchCount++
-			k.mu.Unlock()
-
-			// 获取当前所有服务并调用回调
-			if services, err := k.Discover(serviceName); err == nil {
+			case <-ticker.C:
+				// Mock: discover services and call callback
+				services, _ := k.Discover(serviceName)
 				callback(services)
 			}
 		}
@@ -530,13 +664,13 @@ func convertLabelsToTags(labels map[string]string) []string {
 func (k *KubernetesDiscovery) watchServices() {
 	for _, serviceName := range k.config.WatchServices {
 		go func(name string) {
-			k.Watch(name, func(services []*discovery.ServiceInfo) {
+			k.Watch(name, func(services []*discovery.ServiceInstance) {
 				// 更新统计信息
 				k.mu.Lock()
 				k.stats.LastUpdateTime = time.Now().Unix()
 				k.stats.HealthyServices = 0
 				for _, svc := range services {
-					if svc.Healthy {
+					if svc.Health == discovery.Healthy {
 						k.stats.HealthyServices++
 					}
 				}
@@ -692,7 +826,7 @@ func (k *KubernetesDiscovery) IsRunning() bool {
 }
 
 // GetClient 获取Kubernetes客户端
-func (k *KubernetesDiscovery) GetClient() kubernetes.Interface {
+func (k *KubernetesDiscovery) GetClient() MockKubernetesInterface {
 	return k.client
 }
 

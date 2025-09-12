@@ -5,7 +5,6 @@
 package core
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -164,10 +163,4 @@ func (s *ServerStats) UpdateUptime() {
 	s.Uptime = int64(time.Since(s.StartTime).Seconds())
 }
 
-// 错误定义
-var (
-	ErrServerNotRunning   = fmt.Errorf("server is not running")
-	ErrServerRunning      = fmt.Errorf("server is already running")
-	ErrInvalidConfig      = fmt.Errorf("invalid server config")
-	ErrConnectionClosed   = fmt.Errorf("connection is closed")
-)
+// 错误定义在 errors.go 文件中

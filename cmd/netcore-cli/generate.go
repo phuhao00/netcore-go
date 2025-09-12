@@ -549,4 +549,5 @@ func toSnakeCase(s string) string {
 		}
 		result.WriteRune(r)
 	}
-	return strings.ToLower(result.String
+	return strings.ToLower(result.String())
+}

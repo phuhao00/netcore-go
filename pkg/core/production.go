@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"runtime/debug"
 	"sync"
 	"time"
 )
@@ -331,7 +332,7 @@ func (pm *ProductionManager) setupRuntime() {
 
 	// 设置GC百分比
 	if pm.config.Performance.GCPercent > 0 {
-		runtime.SetGCPercent(pm.config.Performance.GCPercent)
+		debug.SetGCPercent(pm.config.Performance.GCPercent)
 		pm.logger.Infof("Set GC percent to %d", pm.config.Performance.GCPercent)
 	}
 
