@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/netcore-go/pkg/websocket"
+	"github.com/netcore-go"
 )
 
 // WebSocketEchoHandler WebSocket回声处理器

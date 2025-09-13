@@ -12,8 +12,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/netcore-go/pkg/core"
 )
 
 // State 熔断器状态

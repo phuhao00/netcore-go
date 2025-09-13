@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/netcore-go/pkg/tcp"
+	"github.com/netcore-go"
 )
 
 // EchoHandler 回声消息处理器

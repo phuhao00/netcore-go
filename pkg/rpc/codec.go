@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/vmihailenco/msgpack/v5"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -157,14 +158,34 @@ func NewMsgPackCodec() *MsgPackCodec {
 
 // Encode MessagePack编码
 func (c *MsgPackCodec) Encode(v interface{}) ([]byte, error) {
-	// TODO: 实现MessagePack编码
-	return nil, fmt.Errorf("msgpack codec not implemented yet")
+	data, err := msgpack.Marshal(v)
+	if err != nil {
+		return nil, fmt.Errorf("msgpack encode error: %v", err)
+	}
+	return data, nil
 }
 
 // Decode MessagePack解码
 func (c *MsgPackCodec) Decode(data interface{}, v interface{}) error {
-	// TODO: 实现MessagePack解码
-	return fmt.Errorf("msgpack codec not implemented yet")
+	var bytes []byte
+	
+	// 如果data是[]byte，直接使用
+	if byteData, ok := data.([]byte); ok {
+		bytes = byteData
+	} else {
+		// 如果data是其他类型，先编码
+		encoded, err := c.Encode(data)
+		if err != nil {
+			return fmt.Errorf("failed to encode data: %v", err)
+		}
+		bytes = encoded
+	}
+	
+	if err := msgpack.Unmarshal(bytes, v); err != nil {
+		return fmt.Errorf("msgpack decode error: %v", err)
+	}
+	
+	return nil
 }
 
 // Name 获取编解码器名称

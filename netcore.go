@@ -1,223 +1,110 @@
-﻿// Package netcore 提供NetCore-Go高性能网络库的统一API接口
+// Package netcore 提供NetCore-Go框架的主要入口点
 // Author: NetCore-Go Team
 // Created: 2024
 
 package netcore
 
 import (
-	"time"
-
 	"github.com/netcore-go/pkg/core"
 	"github.com/netcore-go/pkg/http"
+	"github.com/netcore-go/pkg/kcp"
+	"github.com/netcore-go/pkg/rpc"
 	"github.com/netcore-go/pkg/tcp"
 	"github.com/netcore-go/pkg/udp"
 	"github.com/netcore-go/pkg/websocket"
 )
 
-// 导出核心类型和接口
-type (
-	// Server 服务器接口
-	Server = core.Server
-	// Connection 连接接口
-	Connection = core.Connection
-	// MessageHandler 消息处理器接口
-	MessageHandler = core.MessageHandler
-	// Middleware 中间件接口
-	Middleware = core.Middleware
-	// Context 上下文接口
-	Context = core.Context
-	// Handler 处理器函数类型
-	Handler = core.Handler
-
-	// Message 消息结构体
-	Message = core.Message
-	// MessageType 消息类型
-	MessageType = core.MessageType
-	// ConnectionState 连接状态
-	ConnectionState = core.ConnectionState
-	// ServerStats 服务器统计信息
-	ServerStats = core.ServerStats
-	// ServerConfig 服务器配置
-	ServerConfig = core.ServerConfig
-	// ServerOption 服务器选项函数
-	ServerOption = core.ServerOption
-	// PoolConfig 连接池配置
-	PoolConfig = core.PoolConfig
-)
-
-// 导出常量
-const (
-	// 连接状态常量
-	StateConnecting    = core.StateConnecting
-	StateConnected     = core.StateConnected
-	StateDisconnecting = core.StateDisconnecting
-	StateDisconnected  = core.StateDisconnected
-	StateError         = core.StateError
-
-	// 消息类型常量
-	MessageTypeText     = core.MessageTypeText
-	MessageTypeBinary   = core.MessageTypeBinary
-	MessageTypeJSON     = core.MessageTypeJSON
-	MessageTypeProtobuf = core.MessageTypeProtobuf
-	MessageTypeCustom   = core.MessageTypeCustom
-	MessageTypePing     = core.MessageTypePing
-	MessageTypePong     = core.MessageTypePong
-	MessageTypeClose    = core.MessageTypeClose
-)
-
-// 服务器创建函数
-
-// NewTCPServer 创建新的TCP服务器
-func NewTCPServer(opts ...ServerOption) Server {
+// NewTCPServer 创建TCP服务器
+func NewTCPServer(opts ...core.ServerOption) core.Server {
 	return tcp.NewTCPServer(opts...)
 }
 
-// NewUDPServer 创建新的UDP服务器
-func NewUDPServer(opts ...ServerOption) Server {
+// NewUDPServer 创建UDP服务器
+func NewUDPServer(opts ...core.ServerOption) core.Server {
 	return udp.NewUDPServer(opts...)
 }
 
-// NewWebSocketServer 创建新的WebSocket服务器
-func NewWebSocketServer(opts ...ServerOption) Server {
+// NewWebSocketServer 创建WebSocket服务器
+func NewWebSocketServer(opts ...core.ServerOption) core.Server {
 	return websocket.NewServer(opts...)
 }
 
+// NewRPCServer 创建RPC服务器
+func NewRPCServer(opts ...core.ServerOption) *rpc.RPCServer {
+	return rpc.NewRPCServer(opts...)
+}
+
+// NewServer 创建通用服务器
+func NewServer(config *Config) core.Server {
+	return tcp.NewTCPServer()
+}
+
 // NewHTTPServer 创建HTTP服务器
-func NewHTTPServer(opts ...ServerOption) core.Server {
-	config := &core.ServerConfig{
-		ReadBufferSize:       4096,
-		WriteBufferSize:      4096,
-		MaxConnections:       1000,
-		ReadTimeout:          30 * time.Second,
-		WriteTimeout:         30 * time.Second,
-		IdleTimeout:          5 * time.Minute,
-		EnableConnectionPool: false,
-		EnableMemoryPool:     false,
-		EnableGoroutinePool:  false,
-		EnableHeartbeat:      true,
-		HeartbeatInterval:    30 * time.Second,
-		EnableReconnect:      false,
-		MaxReconnectAttempts: 3,
-		EnableMetrics:        false,
-		MetricsPath:          "/metrics",
-		EnablePprof:          false,
+func NewHTTPServer(opts ...core.ServerOption) *http.HTTPServer {
+	// 创建HTTP服务器配置
+	httpConfig := &http.ServerConfig{
+		Address: ":8080",
+		Port:    8080,
 	}
-
-	for _, opt := range opts {
-		opt(config)
-	}
-
-	return http.NewHTTPServer(config)
+	return http.NewHTTPServer(httpConfig)
 }
 
-// 配置选项函数
-
-// WithReadBufferSize 设置读缓冲区大小
-func WithReadBufferSize(size int) ServerOption {
-	return core.WithReadBufferSize(size)
+// NewKCPServer 创建KCP服务器
+func NewKCPServer(opts ...core.ServerOption) *kcp.KCPServer {
+	return kcp.NewKCPServer(opts...)
 }
 
-// WithWriteBufferSize 设置写缓冲区大小
-func WithWriteBufferSize(size int) ServerOption {
-	return core.WithWriteBufferSize(size)
+// Config 服务器配置
+type Config struct {
+	Host string `json:"host"`
+	Port int    `json:"port"`
 }
 
-// WithMaxConnections 设置最大连接数
-func WithMaxConnections(max int) ServerOption {
-	return core.WithMaxConnections(max)
-}
+// 导出常用的配置选项
+var (
+	WithMaxConnections    = core.WithMaxConnections
+	WithReadBufferSize    = core.WithReadBufferSize
+	WithWriteBufferSize   = core.WithWriteBufferSize
+	WithHeartbeat         = core.WithHeartbeat
+	WithConnectionPool    = core.WithConnectionPool
+	WithMemoryPool        = core.WithMemoryPool
+	WithGoroutinePool     = core.WithGoroutinePool
+	WithReadTimeout       = core.WithReadTimeout
+	WithWriteTimeout      = core.WithWriteTimeout
+	WithIdleTimeout       = core.WithIdleTimeout
+	WithMetrics           = core.WithMetrics
+)
 
-// WithReadTimeout 设置读超时
-func WithReadTimeout(timeout time.Duration) ServerOption {
-	return core.WithReadTimeout(timeout)
-}
+// 导出常用的中间件
+var (
+	LoggingMiddleware  = core.LoggingMiddleware
+	MetricsMiddleware  = core.MetricsMiddleware
+	RecoveryMiddleware = core.RecoveryMiddleware
+	AuthMiddleware     = core.AuthMiddleware
+	RateLimitMiddleware = core.RateLimitMiddleware
+)
 
-// WithWriteTimeout 设置写超时
-func WithWriteTimeout(timeout time.Duration) ServerOption {
-	return core.WithWriteTimeout(timeout)
-}
+// 导出核心类型
+type (
+	Connection     = core.Connection
+	Message        = core.Message
+	MessageHandler = core.MessageHandler
+	Middleware     = core.Middleware
+	Context        = core.Context
+	ServerStats    = core.ServerStats
+	MessageType    = core.MessageType
+)
 
-// WithIdleTimeout 设置空闲超时
-func WithIdleTimeout(timeout time.Duration) ServerOption {
-	return core.WithIdleTimeout(timeout)
-}
+// 导出消息类型常量
+var (
+	MessageTypeText   = core.MessageTypeText
+	MessageTypeBinary = core.MessageTypeBinary
+	MessageTypeClose  = core.MessageTypeClose
+	MessageTypePing   = core.MessageTypePing
+	MessageTypePong   = core.MessageTypePong
+)
 
-// WithConnectionPool 启用/禁用连接池
-func WithConnectionPool(enable bool) ServerOption {
-	return core.WithConnectionPool(enable)
-}
-
-// WithMemoryPool 启用/禁用内存池
-func WithMemoryPool(enable bool) ServerOption {
-	return core.WithMemoryPool(enable)
-}
-
-// WithGoroutinePool 启用/禁用协程池
-func WithGoroutinePool(enable bool) ServerOption {
-	return core.WithGoroutinePool(enable)
-}
-
-// WithHeartbeat 设置心跳配置
-func WithHeartbeat(enable bool, interval time.Duration) ServerOption {
-	return core.WithHeartbeat(enable, interval)
-}
-
-// WithReconnect 设置重连配置
-func WithReconnect(enable bool, maxAttempts int) ServerOption {
-	return core.WithReconnect(enable, maxAttempts)
-}
-
-// WithMetrics 设置监控配置
-func WithMetrics(enable bool, path string) ServerOption {
-	return core.WithMetrics(enable, path)
-}
-
-// WithPprof 启用/禁用性能分析
-func WithPprof(enable bool) ServerOption {
-	return core.WithPprof(enable)
-}
-
-// 工具函数
-
-// NewMessage 创建新消息
-func NewMessage(msgType MessageType, data []byte) *Message {
-	return core.NewMessage(msgType, data)
-}
-
-// DefaultServerConfig 返回默认服务器配置
-func DefaultServerConfig() *ServerConfig {
-	return core.DefaultServerConfig()
-}
-
-// DefaultPoolConfig 返回默认连接池配置
-func DefaultPoolConfig() *PoolConfig {
-	return core.DefaultPoolConfig()
-}
-
-// 中间件函数
-
-// LoggingMiddleware 日志中间件
-func LoggingMiddleware() Middleware {
-	return core.LoggingMiddleware()
-}
-
-// RateLimitMiddleware 限流中间件
-func RateLimitMiddleware(maxRequests int) Middleware {
-	return core.RateLimitMiddleware(maxRequests)
-}
-
-// AuthMiddleware 认证中间件
-func AuthMiddleware() Middleware {
-	return core.AuthMiddleware()
-}
-
-// MetricsMiddleware 监控中间件
-func MetricsMiddleware() Middleware {
-	return core.MetricsMiddleware()
-}
-
-// RecoveryMiddleware 恢复中间件
-func RecoveryMiddleware() Middleware {
-	return core.RecoveryMiddleware()
-}
-
+// 导出核心函数
+var (
+	NewMessage = core.NewMessage
+)

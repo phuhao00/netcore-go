@@ -8,15 +8,12 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"net"
 	"net/http"
 	"sync"
 	"time"
 
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
-
-	"github.com/netcore-go/pkg/core"
 )
 
 // HTTP2Server HTTP/2服务器

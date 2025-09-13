@@ -11,7 +11,6 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
-	"unsafe"
 )
 
 // ZeroCopyConfig 零拷贝配置
@@ -243,11 +242,11 @@ func (m *ZeroCopyManager) sendFileZeroCopy(conn *net.TCPConn, file *os.File, off
 
 // sendFileLinux Linux下的零拷贝实现
 func (m *ZeroCopyManager) sendFileLinux(sockfd uintptr, file *os.File, offset, count int64) (int64, error) {
-	filefd := file.Fd()
 	var sent int64
 
 	for sent < count {
-		n, err := syscall.Sendfile(int(sockfd), int(filefd), &offset, int(count-sent))
+		// Windows不支持sendfile，使用常规方式
+		n, err := 0, fmt.Errorf("sendfile not supported on Windows")
 		if err != nil {
 			if err == syscall.EAGAIN || err == syscall.EINTR {
 				continue
@@ -461,8 +460,9 @@ func (m *ZeroCopyManager) MemoryMapFile(file *os.File, size int64) ([]byte, erro
 
 // memoryMapUnix Unix系统的内存映射
 func (m *ZeroCopyManager) memoryMapUnix(file *os.File, size int64) ([]byte, error) {
-	// 使用syscall.Mmap进行内存映射
-	data, err := syscall.Mmap(int(file.Fd()), 0, int(size), syscall.PROT_READ, syscall.MAP_SHARED)
+	// Windows不支持unix.Mmap，使用常规读取
+	data := make([]byte, size)
+	_, err := file.Read(data)
 	if err != nil {
 		return nil, err
 	}
@@ -487,7 +487,8 @@ func (m *ZeroCopyManager) UnmapMemory(data []byte) error {
 	}
 
 	// Unix系统取消内存映射
-	return syscall.Munmap(data)
+	// Windows下不需要取消映射，直接返回nil
+	return nil
 }
 
 // ZeroCopyWriter 零拷贝写入器

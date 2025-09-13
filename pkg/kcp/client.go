@@ -6,6 +6,7 @@ package kcp
 
 import (
 	"fmt"
+	"net"
 	"sync"
 	"time"
 
@@ -104,11 +105,19 @@ func (c *KCPClient) Connect() error {
 	var err error
 	
 	// 根据加密算法创建连接
+	var conn net.Conn
 	switch c.kcpConfig.Crypt {
 	case "aes":
 		kcpConn, err = kcp.DialWithOptions(c.address, nil, c.kcpConfig.DataShard, c.kcpConfig.ParityShard)
 	case "none":
-		kcpConn, err = kcp.Dial(c.address)
+		conn, err = kcp.Dial(c.address)
+		if err == nil {
+			var ok bool
+			kcpConn, ok = conn.(*kcp.UDPSession)
+			if !ok {
+				err = fmt.Errorf("failed to convert connection to KCP session")
+			}
+		}
 	default:
 		kcpConn, err = kcp.DialWithOptions(c.address, nil, c.kcpConfig.DataShard, c.kcpConfig.ParityShard)
 	}

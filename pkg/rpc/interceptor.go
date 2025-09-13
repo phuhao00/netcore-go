@@ -8,7 +8,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 // Interceptor 拦截器接口
@@ -111,24 +115,135 @@ type MetricsCollector interface {
 	SetGauge(name string, value float64, labels map[string]string)
 }
 
-// DefaultMetricsCollector 默认指标收集器
+// PrometheusMetricsCollector Prometheus指标收集器
+type PrometheusMetricsCollector struct {
+	counters   map[string]*prometheus.CounterVec
+	histograms map[string]*prometheus.HistogramVec
+	gauges     map[string]*prometheus.GaugeVec
+	mu         sync.RWMutex
+}
+
+// NewPrometheusMetricsCollector 创建Prometheus指标收集器
+func NewPrometheusMetricsCollector() *PrometheusMetricsCollector {
+	return &PrometheusMetricsCollector{
+		counters:   make(map[string]*prometheus.CounterVec),
+		histograms: make(map[string]*prometheus.HistogramVec),
+		gauges:     make(map[string]*prometheus.GaugeVec),
+	}
+}
+
+// IncCounter 增加计数器
+func (m *PrometheusMetricsCollector) IncCounter(name string, labels map[string]string) {
+	m.mu.Lock()
+	counter, exists := m.counters[name]
+	if !exists {
+		// 提取标签键
+		labelKeys := make([]string, 0, len(labels))
+		for key := range labels {
+			labelKeys = append(labelKeys, key)
+		}
+		
+		counter = promauto.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: name,
+				Help: fmt.Sprintf("RPC counter metric: %s", name),
+			},
+			labelKeys,
+		)
+		m.counters[name] = counter
+	}
+	m.mu.Unlock()
+	
+	// 提取标签值
+	labelValues := make([]string, 0, len(labels))
+	for _, value := range labels {
+		labelValues = append(labelValues, value)
+	}
+	
+	counter.WithLabelValues(labelValues...).Inc()
+	log.Printf("[METRICS] Counter %s incremented with labels %v", name, labels)
+}
+
+// ObserveHistogram 观察直方图
+func (m *PrometheusMetricsCollector) ObserveHistogram(name string, value float64, labels map[string]string) {
+	m.mu.Lock()
+	histogram, exists := m.histograms[name]
+	if !exists {
+		// 提取标签键
+		labelKeys := make([]string, 0, len(labels))
+		for key := range labels {
+			labelKeys = append(labelKeys, key)
+		}
+		
+		histogram = promauto.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Name:    name,
+				Help:    fmt.Sprintf("RPC histogram metric: %s", name),
+				Buckets: prometheus.DefBuckets,
+			},
+			labelKeys,
+		)
+		m.histograms[name] = histogram
+	}
+	m.mu.Unlock()
+	
+	// 提取标签值
+	labelValues := make([]string, 0, len(labels))
+	for _, value := range labels {
+		labelValues = append(labelValues, value)
+	}
+	
+	histogram.WithLabelValues(labelValues...).Observe(value)
+	log.Printf("[METRICS] Histogram %s observed value %f with labels %v", name, value, labels)
+}
+
+// SetGauge 设置仪表盘
+func (m *PrometheusMetricsCollector) SetGauge(name string, value float64, labels map[string]string) {
+	m.mu.Lock()
+	gauge, exists := m.gauges[name]
+	if !exists {
+		// 提取标签键
+		labelKeys := make([]string, 0, len(labels))
+		for key := range labels {
+			labelKeys = append(labelKeys, key)
+		}
+		
+		gauge = promauto.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: name,
+				Help: fmt.Sprintf("RPC gauge metric: %s", name),
+			},
+			labelKeys,
+		)
+		m.gauges[name] = gauge
+	}
+	m.mu.Unlock()
+	
+	// 提取标签值
+	labelValues := make([]string, 0, len(labels))
+	for _, value := range labels {
+		labelValues = append(labelValues, value)
+	}
+	
+	gauge.WithLabelValues(labelValues...).Set(value)
+	log.Printf("[METRICS] Gauge %s set to %f with labels %v", name, value, labels)
+}
+
+// DefaultMetricsCollector 默认指标收集器（保持向后兼容）
 type DefaultMetricsCollector struct{}
 
 // IncCounter 增加计数器
 func (m *DefaultMetricsCollector) IncCounter(name string, labels map[string]string) {
-	// TODO: 实现指标收集
 	log.Printf("[METRICS] Counter %s incremented with labels %v", name, labels)
 }
 
 // ObserveHistogram 观察直方图
 func (m *DefaultMetricsCollector) ObserveHistogram(name string, value float64, labels map[string]string) {
-	// TODO: 实现指标收集
 	log.Printf("[METRICS] Histogram %s observed value %f with labels %v", name, value, labels)
 }
 
 // SetGauge 设置仪表盘
 func (m *DefaultMetricsCollector) SetGauge(name string, value float64, labels map[string]string) {
-	// TODO: 实现指标收集
 	log.Printf("[METRICS] Gauge %s set to %f with labels %v", name, value, labels)
 }
 

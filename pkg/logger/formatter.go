@@ -434,3 +434,4 @@ func NewCustomFormatter(formatFunc func(*Entry) ([]byte, error)) *CustomFormatte
 	return &CustomFormatter{
 		FormatFunc: formatFunc,
 	}
+}

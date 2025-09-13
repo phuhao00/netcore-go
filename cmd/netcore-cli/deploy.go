@@ -7,6 +7,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -14,7 +15,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
 // DeploymentConfig 部署配置
@@ -204,8 +207,55 @@ func setDeploymentConfig(cmd *cobra.Command, config *DeploymentConfig) error {
 
 // loadDeploymentConfig 加载部署配置文件
 func loadDeploymentConfig(configFile string, config *DeploymentConfig) error {
-	// TODO: 实现配置文件加载逻辑
 	fmt.Printf("Loading deployment config from: %s\n", configFile)
+	
+	// 检查配置文件是否存在
+	if _, err := os.Stat(configFile); os.IsNotExist(err) {
+		return fmt.Errorf("deployment config file not found: %s", configFile)
+	}
+	
+	// 读取配置文件
+	configData, err := os.ReadFile(configFile)
+	if err != nil {
+		return fmt.Errorf("failed to read config file: %w", err)
+	}
+	
+	// 根据文件扩展名选择解析方式
+	ext := filepath.Ext(configFile)
+	switch ext {
+	case ".json":
+		if err := json.Unmarshal(configData, config); err != nil {
+			return fmt.Errorf("failed to parse JSON config: %w", err)
+		}
+	case ".yaml", ".yml":
+		if err := yaml.Unmarshal(configData, config); err != nil {
+			return fmt.Errorf("failed to parse YAML config: %w", err)
+		}
+	case ".toml":
+		if err := toml.Unmarshal(configData, config); err != nil {
+			return fmt.Errorf("failed to parse TOML config: %w", err)
+		}
+	default:
+		// 默认尝试JSON格式
+		if err := json.Unmarshal(configData, config); err != nil {
+			return fmt.Errorf("failed to parse config file (unknown format): %w", err)
+		}
+	}
+	
+	// 验证必要字段
+	if config.Environment == "" {
+		config.Environment = "production"
+	}
+	
+	if config.Namespace == "" {
+		config.Namespace = "default"
+	}
+	
+	if config.Variables == nil {
+		config.Variables = make(map[string]string)
+	}
+	
+	fmt.Printf("✅ Loaded deployment config for environment: %s\n", config.Environment)
 	return nil
 }
 
@@ -278,13 +328,80 @@ func validateComposePrerequisites() error {
 
 // validateServerlessPrerequisites 验证Serverless前提条件
 func validateServerlessPrerequisites(config *DeploymentConfig) error {
-	// TODO: 根据provider验证相应的CLI工具
+	provider := config.Variables["provider"]
+	if provider == "" {
+		provider = "aws" // 默认AWS
+	}
+	
+	switch provider {
+	case "aws":
+		// 检查AWS CLI
+		if _, err := exec.LookPath("aws"); err != nil {
+			return fmt.Errorf("AWS CLI is not installed or not in PATH")
+		}
+		// 检查SAM CLI
+		if _, err := exec.LookPath("sam"); err != nil {
+			fmt.Println("⚠️  SAM CLI not found, using AWS CLI for deployment")
+		}
+	case "gcp":
+		// 检查gcloud CLI
+		if _, err := exec.LookPath("gcloud"); err != nil {
+			return fmt.Errorf("gcloud CLI is not installed or not in PATH")
+		}
+	case "azure":
+		// 检查Azure CLI
+		if _, err := exec.LookPath("az"); err != nil {
+			return fmt.Errorf("Azure CLI is not installed or not in PATH")
+		}
+	default:
+		return fmt.Errorf("unsupported serverless provider: %s", provider)
+	}
+	
 	return nil
 }
 
 // validateCloudPrerequisites 验证云平台前提条件
 func validateCloudPrerequisites(config *DeploymentConfig) error {
-	// TODO: 根据provider验证相应的CLI工具
+	provider := config.Variables["provider"]
+	if provider == "" {
+		provider = "aws" // 默认AWS
+	}
+	
+	switch provider {
+	case "aws":
+		// 检查AWS CLI
+		if _, err := exec.LookPath("aws"); err != nil {
+			return fmt.Errorf("AWS CLI is not installed or not in PATH")
+		}
+		// 检查AWS凭证
+		cmd := exec.Command("aws", "sts", "get-caller-identity")
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("AWS credentials not configured")
+		}
+	case "gcp":
+		// 检查gcloud CLI
+		if _, err := exec.LookPath("gcloud"); err != nil {
+			return fmt.Errorf("gcloud CLI is not installed or not in PATH")
+		}
+		// 检查GCP认证
+		cmd := exec.Command("gcloud", "auth", "list", "--filter=status:ACTIVE", "--format=value(account)")
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("GCP authentication not configured")
+		}
+	case "azure":
+		// 检查Azure CLI
+		if _, err := exec.LookPath("az"); err != nil {
+			return fmt.Errorf("Azure CLI is not installed or not in PATH")
+		}
+		// 检查Azure登录状态
+		cmd := exec.Command("az", "account", "show")
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("Azure authentication not configured")
+		}
+	default:
+		return fmt.Errorf("unsupported cloud provider: %s", provider)
+	}
+	
 	return nil
 }
 
@@ -432,9 +549,21 @@ func deployServerless(config *DeploymentConfig, dryRun, wait bool, timeout time.
 		return nil
 	}
 	
-	// TODO: 实现Serverless部署逻辑
-	fmt.Println("🚧 Serverless deployment not yet implemented")
-	return fmt.Errorf("serverless deployment not implemented")
+	provider := config.Variables["provider"]
+	if provider == "" {
+		provider = "aws"
+	}
+	
+	switch provider {
+	case "aws":
+		return deployAWSServerless(config, dryRun, wait, timeout)
+	case "gcp":
+		return deployGCPServerless(config, dryRun, wait, timeout)
+	case "azure":
+		return deployAzureServerless(config, dryRun, wait, timeout)
+	default:
+		return fmt.Errorf("unsupported serverless provider: %s", provider)
+	}
 }
 
 // deployCloud 部署到云平台
@@ -446,9 +575,21 @@ func deployCloud(config *DeploymentConfig, dryRun, wait bool, timeout time.Durat
 		return nil
 	}
 	
-	// TODO: 实现云平台部署逻辑
-	fmt.Println("🚧 Cloud deployment not yet implemented")
-	return fmt.Errorf("cloud deployment not implemented")
+	provider := config.Variables["provider"]
+	if provider == "" {
+		provider = "aws"
+	}
+	
+	switch provider {
+	case "aws":
+		return deployAWSCloud(config, dryRun, wait, timeout)
+	case "gcp":
+		return deployGCPCloud(config, dryRun, wait, timeout)
+	case "azure":
+		return deployAzureCloud(config, dryRun, wait, timeout)
+	default:
+		return fmt.Errorf("unsupported cloud provider: %s", provider)
+	}
 }
 
 // showKubernetesServiceInfo 显示Kubernetes服务信息
@@ -615,7 +756,7 @@ func showDockerLogs(follow bool, tail string) error {
 }
 
 // showKubernetesLogs 显示Kubernetes日志
-func showKubernetesLogs(namespace, follow bool, tail string) error {
+func showKubernetesLogs(namespace string, follow bool, tail string) error {
 	args := []string{"logs", "-l", "app=netcore-app", "-n", namespace, "--tail", tail}
 	if follow {
 		args = append(args, "-f")
@@ -702,4 +843,113 @@ func rollbackKubernetes(namespace, revision string) error {
 	
 	fmt.Println("✅ Rollback completed successfully")
 	return nil
+}
+
+// AWS Serverless部署函数
+func deployAWSServerless(config *DeploymentConfig, dryRun, wait bool, timeout time.Duration) error {
+	fmt.Println("🚀 Deploying to AWS Lambda...")
+	
+	if dryRun {
+		fmt.Println("Dry run mode - AWS Lambda deployment would be executed")
+		return nil
+	}
+	
+	// 检查是否有SAM模板
+	if _, err := os.Stat("template.yaml"); err == nil {
+		// 使用SAM部署
+		cmd := exec.Command("sam", "deploy", "--guided")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		return cmd.Run()
+	}
+	
+	// 使用AWS CLI部署
+	fmt.Println("📦 Building and deploying Lambda function...")
+	cmd := exec.Command("aws", "lambda", "update-function-code", "--function-name", "netcore-app", "--zip-file", "fileb://function.zip")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func deployGCPServerless(config *DeploymentConfig, dryRun, wait bool, timeout time.Duration) error {
+	fmt.Println("🚀 Deploying to Google Cloud Functions...")
+	
+	if dryRun {
+		fmt.Println("Dry run mode - GCP Cloud Functions deployment would be executed")
+		return nil
+	}
+	
+	cmd := exec.Command("gcloud", "functions", "deploy", "netcore-app", "--runtime", "go121", "--trigger-http", "--allow-unauthenticated")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func deployAzureServerless(config *DeploymentConfig, dryRun, wait bool, timeout time.Duration) error {
+	fmt.Println("🚀 Deploying to Azure Functions...")
+	
+	if dryRun {
+		fmt.Println("Dry run mode - Azure Functions deployment would be executed")
+		return nil
+	}
+	
+	cmd := exec.Command("az", "functionapp", "deployment", "source", "config-zip", "--resource-group", "netcore-rg", "--name", "netcore-app", "--src", "function.zip")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+// AWS Cloud部署函数
+func deployAWSCloud(config *DeploymentConfig, dryRun, wait bool, timeout time.Duration) error {
+	fmt.Println("☁️  Deploying to AWS ECS/EKS...")
+	
+	if dryRun {
+		fmt.Println("Dry run mode - AWS cloud deployment would be executed")
+		return nil
+	}
+	
+	// 检查是否有EKS集群配置
+	if config.Variables["cluster_name"] != "" {
+		// 部署到EKS
+		cmd := exec.Command("aws", "eks", "update-kubeconfig", "--name", config.Variables["cluster_name"])
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to update kubeconfig: %w", err)
+		}
+		return deployKubernetes(config, dryRun, wait, timeout)
+	}
+	
+	// 部署到ECS
+	fmt.Println("📦 Deploying to AWS ECS...")
+	cmd := exec.Command("aws", "ecs", "update-service", "--cluster", "netcore-cluster", "--service", "netcore-service", "--force-new-deployment")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func deployGCPCloud(config *DeploymentConfig, dryRun, wait bool, timeout time.Duration) error {
+	fmt.Println("☁️  Deploying to Google Cloud Run...")
+	
+	if dryRun {
+		fmt.Println("Dry run mode - GCP cloud deployment would be executed")
+		return nil
+	}
+	
+	cmd := exec.Command("gcloud", "run", "deploy", "netcore-app", "--image", "gcr.io/PROJECT_ID/netcore-app", "--platform", "managed", "--region", "us-central1", "--allow-unauthenticated")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func deployAzureCloud(config *DeploymentConfig, dryRun, wait bool, timeout time.Duration) error {
+	fmt.Println("☁️  Deploying to Azure Container Instances...")
+	
+	if dryRun {
+		fmt.Println("Dry run mode - Azure cloud deployment would be executed")
+		return nil
+	}
+	
+	cmd := exec.Command("az", "container", "create", "--resource-group", "netcore-rg", "--name", "netcore-app", "--image", "netcore-app:latest", "--dns-name-label", "netcore-app", "--ports", "8080")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }

@@ -114,17 +114,6 @@ type Logger struct {
 	skipCaller int
 }
 
-// Config 日志器配置
-type Config struct {
-	Level      Level
-	Formatter  Formatter
-	Writers    []Writer
-	Hooks      []Hook
-	Fields     map[string]interface{}
-	Caller     bool
-	SkipCaller int
-}
-
 // NewLogger 创建新的日志器
 func NewLogger(config *Config) *Logger {
 	if config == nil {
@@ -133,30 +122,47 @@ func NewLogger(config *Config) *Logger {
 	
 	logger := &Logger{
 		level:      config.Level,
-		formatter:  config.Formatter,
-		writers:    config.Writers,
-		hooks:      config.Hooks,
+		formatter:  nil, // Will be set based on config.Formatter string
+		writers:    nil, // Will be set based on config.Output string
+		hooks:      nil,
 		fields:     make(map[string]interface{}),
-		caller:     config.Caller,
-		skipCaller: config.SkipCaller,
+		caller:     false,
+		skipCaller: 0,
 	}
 	
-	// 设置默认格式化器
-	if logger.formatter == nil {
+	// 设置格式化器
+	switch config.Formatter {
+	case "json":
+		logger.formatter = &JSONFormatter{}
+	case "text":
+		logger.formatter = &TextFormatter{}
+	default:
 		logger.formatter = &TextFormatter{}
 	}
 	
-	// 设置默认写入器
-	if len(logger.writers) == 0 {
+	// 设置写入器
+	switch config.Output {
+	case "file":
+		if config.FilePath != "" {
+			if fileWriter, err := NewFileWriter(&FileWriterConfig{
+				Filename: config.FilePath,
+				MaxSize:  config.MaxSize,
+			}); err == nil {
+				logger.writers = []Writer{fileWriter}
+			} else {
+				logger.writers = []Writer{&ConsoleWriter{Output: os.Stdout}}
+			}
+		} else {
+			logger.writers = []Writer{&ConsoleWriter{Output: os.Stdout}}
+		}
+	case "console":
+		logger.writers = []Writer{&ConsoleWriter{Output: os.Stdout}}
+	default:
 		logger.writers = []Writer{&ConsoleWriter{Output: os.Stdout}}
 	}
 	
-	// 复制字段
-	if config.Fields != nil {
-		for k, v := range config.Fields {
-			logger.fields[k] = v
-		}
-	}
+	// 字段初始化完成
+	// config.Fields field does not exist in current Config struct
 	
 	return logger
 }

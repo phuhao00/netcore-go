@@ -8,16 +8,12 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"net"
 	"net/http"
 	"sync"
 	"time"
 
-	// TODO: Uncomment when quic-go dependencies are available
-	// "github.com/quic-go/quic-go"
-	// "github.com/quic-go/quic-go/http3"
-
-	"github.com/netcore-go/pkg/core"
+	"github.com/quic-go/quic-go"
+	"github.com/quic-go/quic-go/http3"
 )
 
 // HTTP3Server HTTP/3服务器
@@ -30,7 +26,7 @@ type HTTP3Server struct {
 	ctx      context.Context
 	cancel   context.CancelFunc
 	stats    *HTTP3Stats
-	listener *quic.Listener
+	listener *quic.EarlyListener
 }
 
 // HTTP3Config HTTP/3配置
@@ -45,21 +41,12 @@ type HTTP3Config struct {
 	TLSConfig *tls.Config `json:"-"`
 
 	// QUIC特定配置
-	MaxBidiStreams         int64         `json:"max_bidi_streams"`
-	MaxUniStreams          int64         `json:"max_uni_streams"`
-	MaxStreamReceiveWindow uint64        `json:"max_stream_receive_window"`
-	MaxConnectionReceiveWindow uint64    `json:"max_connection_receive_window"`
 	MaxIdleTimeout         time.Duration `json:"max_idle_timeout"`
 	KeepAlivePeriod        time.Duration `json:"keep_alive_period"`
 	HandshakeIdleTimeout   time.Duration `json:"handshake_idle_timeout"`
-	MaxIncomingStreams     int64         `json:"max_incoming_streams"`
-	MaxIncomingUniStreams  int64         `json:"max_incoming_uni_streams"`
 
 	// HTTP/3特定配置
 	MaxHeaderBytes         int           `json:"max_header_bytes"`
-	AdditionalSettings     map[uint64]uint64 `json:"additional_settings"`
-	StreamHijacker         func(http3.StreamType, quic.Connection, http3.Stream, error) (hijacked bool) `json:"-"`
-	UniStreamHijacker      func(http3.StreamType, quic.Connection, quic.ReceiveStream, error) (hijacked bool) `json:"-"`
 
 	// 性能配置
 	EnableDatagrams        bool          `json:"enable_datagrams"`
@@ -87,20 +74,13 @@ type HTTP3Stats struct {
 // DefaultHTTP3Config 返回默认HTTP/3配置
 func DefaultHTTP3Config() *HTTP3Config {
 	return &HTTP3Config{
-		Host:                       "localhost",
-		Port:                       8443,
-		MaxBidiStreams:             100,
-		MaxUniStreams:              100,
-		MaxStreamReceiveWindow:     6291456,  // 6MB
-		MaxConnectionReceiveWindow: 15728640, // 15MB
-		MaxIdleTimeout:             300 * time.Second,
-		KeepAlivePeriod:            30 * time.Second,
-		HandshakeIdleTimeout:       10 * time.Second,
-		MaxIncomingStreams:         100,
-		MaxIncomingUniStreams:      100,
-		MaxHeaderBytes:             1048576, // 1MB
-		EnableDatagrams:            false,
-		AdditionalSettings:         make(map[uint64]uint64),
+		Host:                 "localhost",
+		Port:                 8443,
+		MaxIdleTimeout:       300 * time.Second,
+		KeepAlivePeriod:      30 * time.Second,
+		HandshakeIdleTimeout: 10 * time.Second,
+		MaxHeaderBytes:       1048576, // 1MB
+		EnableDatagrams:      false,
 	}
 }
 
@@ -154,33 +134,18 @@ func (s *HTTP3Server) Start() error {
 	quicConfig := s.config.QUICConfig
 	if quicConfig == nil {
 		quicConfig = &quic.Config{
-			MaxBidiStreamNum:               s.config.MaxBidiStreams,
-			MaxUniStreamNum:                s.config.MaxUniStreams,
-			MaxStreamReceiveWindow:         s.config.MaxStreamReceiveWindow,
-			MaxConnectionReceiveWindow:     s.config.MaxConnectionReceiveWindow,
-			MaxIdleTimeout:                 s.config.MaxIdleTimeout,
-			KeepAlivePeriod:                s.config.KeepAlivePeriod,
-			HandshakeIdleTimeout:           s.config.HandshakeIdleTimeout,
-			MaxIncomingStreams:             s.config.MaxIncomingStreams,
-			MaxIncomingUniStreams:          s.config.MaxIncomingUniStreams,
-			EnableDatagrams:                s.config.EnableDatagrams,
+			MaxIdleTimeout:       s.config.MaxIdleTimeout,
+			KeepAlivePeriod:      s.config.KeepAlivePeriod,
+			HandshakeIdleTimeout: s.config.HandshakeIdleTimeout,
+			EnableDatagrams:      s.config.EnableDatagrams,
 		}
 	}
 
-	// 创建UDP监听器
+	// 创建监听地址
 	addr := fmt.Sprintf("%s:%d", s.config.Host, s.config.Port)
-	udpAddr, err := net.ResolveUDPAddr("udp", addr)
-	if err != nil {
-		return fmt.Errorf("failed to resolve UDP address: %w", err)
-	}
-
-	udpConn, err := net.ListenUDP("udp", udpAddr)
-	if err != nil {
-		return fmt.Errorf("failed to listen on UDP: %w", err)
-	}
 
 	// 创建QUIC监听器
-	listener, err := quic.Listen(udpConn, tlsConfig, quicConfig)
+	listener, err := quic.ListenAddrEarly(addr, tlsConfig, quicConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create QUIC listener: %w", err)
 	}
@@ -188,11 +153,7 @@ func (s *HTTP3Server) Start() error {
 
 	// 创建HTTP/3服务器
 	s.server = &http3.Server{
-		Handler:               s.createHandler(),
-		MaxHeaderBytes:        s.config.MaxHeaderBytes,
-		AdditionalSettings:    s.config.AdditionalSettings,
-		StreamHijacker:        s.config.StreamHijacker,
-		UniStreamHijacker:     s.config.UniStreamHijacker,
+		Handler: s.createHandler(),
 	}
 
 	s.running = true
@@ -205,7 +166,7 @@ func (s *HTTP3Server) Start() error {
 			s.mu.Unlock()
 		}()
 
-		if err := s.server.Serve(listener); err != nil {
+		if err := s.server.ServeListener(listener); err != nil {
 			fmt.Printf("HTTP/3 server error: %v\n", err)
 		}
 	}()
@@ -229,8 +190,8 @@ func (s *HTTP3Server) Stop() error {
 	defer cancel()
 
 	// 关闭HTTP/3服务器
-	if err := s.server.CloseGracefully(); err != nil {
-		return fmt.Errorf("failed to close HTTP/3 server gracefully: %w", err)
+	if err := s.server.Shutdown(ctx); err != nil {
+		return fmt.Errorf("failed to shutdown HTTP/3 server: %w", err)
 	}
 
 	// 关闭QUIC监听器

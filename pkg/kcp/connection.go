@@ -82,8 +82,9 @@ func (c *KCPConnection) Send(data []byte) error {
 	}
 	
 	// 设置写入超时
-	if c.server.Config.WriteTimeout > 0 {
-		c.conn.SetWriteDeadline(time.Now().Add(c.server.Config.WriteTimeout))
+	config := c.server.BaseServer.GetConfig()
+	if config.WriteTimeout > 0 {
+		c.conn.SetWriteDeadline(time.Now().Add(config.WriteTimeout))
 	}
 	
 	// 写入数据长度（4字节）
@@ -140,8 +141,9 @@ func (c *KCPConnection) ReadMessage() (core.Message, error) {
 	}
 	
 	// 设置读取超时
-	if c.server.Config.ReadTimeout > 0 {
-		c.conn.SetReadDeadline(time.Now().Add(c.server.Config.ReadTimeout))
+	config := c.server.BaseServer.GetConfig()
+	if config.ReadTimeout > 0 {
+		c.conn.SetReadDeadline(time.Now().Add(config.ReadTimeout))
 	}
 	
 	// 读取数据长度（4字节）

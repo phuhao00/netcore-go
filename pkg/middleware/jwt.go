@@ -1,4 +1,4 @@
-﻿// Package middleware 实现NetCore-Go网络库的扩展中间件
+// Package middleware 实现NetCore-Go网络库的扩展中间件
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -146,12 +146,13 @@ func (m *JWTMiddleware) extractToken(ctx core.Context) (string, error) {
 // extractFromHeader 从头部提取token
 func (m *JWTMiddleware) extractFromHeader(ctx core.Context, key string) (string, error) {
 	msg := ctx.Message()
-	if msg == nil {
-		return "", errors.New("no message in context")
+	// 检查消息是否有效
+	if len(msg.Data) == 0 && len(msg.Headers) == 0 {
+		return "", errors.New("no valid message in context")
 	}
 
-	auth := msg.GetHeader(key)
-	if auth == "" {
+	auth, exists := msg.GetHeader(key)
+	if !exists || auth == "" {
 		return "", errors.New("missing authorization header")
 	}
 

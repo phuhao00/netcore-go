@@ -192,16 +192,16 @@ func (w *ConfigWizard) Run() (*ProjectWizardConfig, error) {
 	fmt.Println()
 
 	steps := []WizardStep{
-		{"Basic Information", "Configure basic project information", w.configureBasicInfo, false},
-		{"Project Type", "Select project type and features", w.configureProjectType, false},
-		{"Database", "Configure database settings", w.configureDatabase, true},
-		{"Cache", "Configure caching settings", w.configureCache, true},
-		{"Authentication", "Configure authentication settings", w.configureAuth, true},
-		{"Middleware", "Select middleware components", w.configureMiddleware, true},
-		{"Deployment", "Configure deployment settings", w.configureDeployment, true},
-		{"Development", "Configure development settings", w.configureDevelopment, true},
-		{"Testing", "Configure testing settings", w.configureTesting, true},
-		{"Monitoring", "Configure monitoring settings", w.configureMonitoring, true},
+		{"Basic Information", "Configure basic project information", (*ConfigWizard).configureBasicInfo, false},
+		{"Project Type", "Select project type and features", (*ConfigWizard).configureProjectType, false},
+		{"Database", "Configure database settings", (*ConfigWizard).configureDatabase, true},
+		{"Cache", "Configure caching settings", (*ConfigWizard).configureCache, true},
+		{"Authentication", "Configure authentication settings", (*ConfigWizard).configureAuth, true},
+		{"Middleware", "Select middleware components", (*ConfigWizard).configureMiddleware, true},
+		{"Deployment", "Configure deployment settings", (*ConfigWizard).configureDeployment, true},
+		{"Development", "Configure development settings", (*ConfigWizard).configureDevelopment, true},
+		{"Testing", "Configure testing settings", (*ConfigWizard).configureTesting, true},
+		{"Monitoring", "Configure monitoring settings", (*ConfigWizard).configureMonitoring, true},
 	}
 
 	for i, step := range steps {
@@ -316,7 +316,8 @@ func (w *ConfigWizard) configureDatabase() error {
 		w.config.Database.Host = w.askString("Host", "localhost")
 		w.config.Database.Port = w.askInt("Port", 6379)
 		w.config.Database.Password = w.askString("Password (optional)", "")
-		w.config.Database.Database = w.askInt("Database number", 0)
+		dbNum := w.askInt("Database number", 0)
+		w.config.Database.Database = fmt.Sprintf("%d", dbNum)
 	}
 
 	w.config.Database.Migrations = w.askYesNo("Enable database migrations?", true)

@@ -24,7 +24,7 @@ const (
 	ExponentialBackoff                     // 指数退避
 	LinearBackoff                          // 线性退避
 	RandomJitter                           // 随机抖动
-	Custom                                 // 自定义策略
+	CustomStrategy                         // 自定义策略
 )
 
 // String 返回策略名称
@@ -38,7 +38,7 @@ func (r ReconnectStrategy) String() string {
 		return "linear_backoff"
 	case RandomJitter:
 		return "random_jitter"
-	case Custom:
+	case CustomStrategy:
 		return "custom"
 	default:
 		return "unknown"
@@ -395,7 +395,7 @@ func (r *ReconnectManager) calculateInterval(attempt int) time.Duration {
 		jitter := time.Duration(float64(base) * r.config.JitterRange * (rand.Float64()*2 - 1))
 		interval = base + jitter
 
-	case Custom:
+	case CustomStrategy:
 		if r.config.CustomIntervalFunc != nil {
 			interval = r.config.CustomIntervalFunc(attempt)
 		} else {

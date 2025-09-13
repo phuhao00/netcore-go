@@ -6,6 +6,7 @@ package etcd
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"path"
@@ -13,9 +14,8 @@ import (
 	"sync"
 	"time"
 
-	// TODO: Uncomment when etcd dependencies are available
-	// "go.etcd.io/etcd/clientv3"
-	// "go.etcd.io/etcd/mvcc/mvccpb"
+	v3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/api/v3/mvccpb"
 
 	"github.com/netcore-go/pkg/discovery"
 )
@@ -23,14 +23,14 @@ import (
 // EtcdDiscovery etcd服务发现
 type EtcdDiscovery struct {
 	mu       sync.RWMutex
-	client   *clientv3.Client
+	client   *v3.Client
 	config   *EtcdConfig
 	services map[string]*discovery.ServiceInstance
 	running  bool
 	ctx      context.Context
 	cancel   context.CancelFunc
 	stats    *EtcdStats
-	leases   map[string]clientv3.LeaseID
+	leases   map[string]v3.LeaseID
 }
 
 // EtcdConfig etcd配置
@@ -42,7 +42,7 @@ type EtcdConfig struct {
 	Password    string        `json:"password"`
 
 	// TLS配置
-	TLSConfig *clientv3.TLSConfig `json:"tls_config"`
+	TLSConfig *tls.Config `json:"tls_config"`
 
 	// 服务注册配置
 	ServicePrefix   string            `json:"service_prefix"`
@@ -105,7 +105,7 @@ func NewEtcdDiscovery(config *EtcdConfig) (*EtcdDiscovery, error) {
 	}
 
 	// 创建etcd客户端配置
-	clientConfig := clientv3.Config{
+	clientConfig := v3.Config{
 		Endpoints:   config.Endpoints,
 		DialTimeout: config.DialTimeout,
 		Username:    config.Username,
@@ -113,11 +113,11 @@ func NewEtcdDiscovery(config *EtcdConfig) (*EtcdDiscovery, error) {
 	}
 
 	if config.TLSConfig != nil {
-		clientConfig.TLS = config.TLSConfig.TLSConfig()
+		clientConfig.TLS = config.TLSConfig
 	}
 
 	// 创建etcd客户端
-	client, err := clientv3.New(clientConfig)
+	client, err := v3.New(clientConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create etcd client: %w", err)
 	}
@@ -131,7 +131,7 @@ func NewEtcdDiscovery(config *EtcdConfig) (*EtcdDiscovery, error) {
 		ctx:      ctx,
 		cancel:   cancel,
 		stats:    &EtcdStats{},
-		leases:   make(map[string]clientv3.LeaseID),
+		leases:   make(map[string]v3.LeaseID),
 	}, nil
 }
 
@@ -212,7 +212,7 @@ func (e *EtcdDiscovery) Register(service *discovery.ServiceInstance) error {
 	serviceKey := e.buildServiceKey(service.Name, service.ID)
 
 	// 注册服务
-	_, err = e.client.Put(context.Background(), serviceKey, string(serviceData), clientv3.WithLease(leaseResp.ID))
+	_, err = e.client.Put(context.Background(), serviceKey, string(serviceData), v3.WithLease(leaseResp.ID))
 	if err != nil {
 		e.stats.ErrorCount++
 		return fmt.Errorf("failed to register service: %w", err)
@@ -286,7 +286,7 @@ func (e *EtcdDiscovery) Deregister(serviceID string) error {
 }
 
 // Discover 发现服务
-func (e *EtcdDiscovery) Discover(serviceName string) ([]*discovery.ServiceInstance, error {
+func (e *EtcdDiscovery) Discover(serviceName string) ([]*discovery.ServiceInstance, error) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
@@ -298,7 +298,7 @@ func (e *EtcdDiscovery) Discover(serviceName string) ([]*discovery.ServiceInstan
 	servicePrefix := e.buildServicePrefix(serviceName)
 
 	// 查询服务
-	resp, err := e.client.Get(context.Background(), servicePrefix, clientv3.WithPrefix())
+	resp, err := e.client.Get(context.Background(), servicePrefix, v3.WithPrefix())
 	if err != nil {
 		e.stats.ErrorCount++
 		return nil, fmt.Errorf("failed to discover services: %w", err)
@@ -331,7 +331,7 @@ func (e *EtcdDiscovery) Watch(serviceName string, callback func([]*discovery.Ser
 		servicePrefix := e.buildServicePrefix(serviceName)
 
 		// 创建监控
-		watchCh := e.client.Watch(e.ctx, servicePrefix, clientv3.WithPrefix())
+		watchCh := e.client.Watch(e.ctx, servicePrefix, v3.WithPrefix())
 
 		for watchResp := range watchCh {
 			if watchResp.Err() != nil {
@@ -426,7 +426,7 @@ func (e *EtcdDiscovery) refreshStats() {
 	defer e.mu.Unlock()
 
 	// 获取所有服务
-	resp, err := e.client.Get(context.Background(), e.config.ServicePrefix, clientv3.WithPrefix(), clientv3.WithCountOnly())
+	resp, err := e.client.Get(context.Background(), e.config.ServicePrefix, v3.WithPrefix(), v3.WithCountOnly())
 	if err != nil {
 		e.stats.ErrorCount++
 		return
@@ -452,7 +452,7 @@ func (e *EtcdDiscovery) IsRunning() bool {
 }
 
 // GetClient 获取etcd客户端
-func (e *EtcdDiscovery) GetClient() *clientv3.Client {
+func (e *EtcdDiscovery) GetClient() *v3.Client {
 	return e.client
 }
 
@@ -481,7 +481,7 @@ func (e *EtcdDiscovery) GetAllServices() (map[string][]*discovery.ServiceInstanc
 	}
 
 	// 获取所有服务
-	resp, err := e.client.Get(context.Background(), e.config.ServicePrefix, clientv3.WithPrefix())
+	resp, err := e.client.Get(context.Background(), e.config.ServicePrefix, v3.WithPrefix())
 	if err != nil {
 		e.stats.ErrorCount++
 		return nil, fmt.Errorf("failed to get all services: %w", err)

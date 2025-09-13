@@ -12,8 +12,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-
-	"github.com/netcore-go/pkg/core"
 )
 
 // ShutdownHook 关闭钩子函数类型

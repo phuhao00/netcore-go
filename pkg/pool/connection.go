@@ -23,6 +23,10 @@ type ConnectionPool interface {
 	Close() error
 	// Stats 获取统计信息
 	Stats() *ConnectionPoolStats
+	// AddConnection 添加连接
+	AddConnection(conn net.Conn) error
+	// RemoveConnection 移除连接
+	RemoveConnection(conn net.Conn) error
 }
 
 // TCPConnectionPool TCP连接池实现
@@ -70,6 +74,14 @@ func DefaultConnectionPoolConfig() *ConnectionPoolConfig {
 		IdleTimeout: 300 * time.Second,
 		ConnTimeout: 30 * time.Second,
 	}
+}
+
+// Config 连接池配置别名
+type Config = ConnectionPoolConfig
+
+// NewConnectionPool 创建新的连接池
+func NewConnectionPool(config *Config) ConnectionPool {
+	return NewTCPConnectionPool(config)
 }
 
 // NewTCPConnectionPool 创建新的TCP连接池
@@ -222,6 +234,20 @@ func (p *TCPConnectionPool) Stats() *ConnectionPoolStats {
 		PoolSize:  int32(len(p.connections)),
 		MaxSize:   int32(p.maxSize),
 	}
+}
+
+// AddConnection 添加连接到池中
+func (p *TCPConnectionPool) AddConnection(conn net.Conn) error {
+	return p.Put(conn)
+}
+
+// RemoveConnection 从池中移除连接
+func (p *TCPConnectionPool) RemoveConnection(conn net.Conn) error {
+	if conn != nil {
+		conn.Close()
+		atomic.AddInt64(&p.stats.Closed, 1)
+	}
+	return nil
 }
 
 // createConnection 创建新连接

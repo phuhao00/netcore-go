@@ -10,7 +10,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"runtime"
 	"strings"
@@ -19,8 +18,6 @@ import (
 	"time"
 
 	"github.com/netcore-go/pkg/core"
-	"github.com/netcore-go/pkg/middleware"
-	"github.com/netcore-go/pkg/pool"
 	"github.com/netcore-go"
 )
 
@@ -145,8 +142,7 @@ func (t *TCPBenchmark) Run(ctx context.Context, config *BenchmarkConfig) (*Bench
 		latenciesMutex     sync.Mutex
 	)
 
-	// 创建工作协程
-	var wg sync.WaitGroup
+	// 设置超时上下文
 	ctx, cancel := context.WithTimeout(ctx, config.Duration)
 	defer cancel()
 
@@ -280,7 +276,7 @@ func (h *EchoHandler) OnConnect(conn core.Connection) {
 // OnMessage 消息处理
 func (h *EchoHandler) OnMessage(conn core.Connection, msg core.Message) {
 	// 回显消息
-	conn.Send(msg.GetData())
+	conn.Send(msg.Data)
 }
 
 // OnDisconnect 连接断开

@@ -11,8 +11,6 @@ import (
 	"net/http"
 	"sync"
 	"time"
-
-	"github.com/netcore-go/pkg/core"
 )
 
 // HealthStatus 健康状态
@@ -42,12 +40,15 @@ type HealthChecker interface {
 
 // HealthCheckResult 健康检查结果
 type HealthCheckResult struct {
-	Status    HealthStatus `json:"status"`
-	Message   string       `json:"message,omitempty"`
-	Error     string       `json:"error,omitempty"`
-	Timestamp time.Time    `json:"timestamp"`
-	Duration  time.Duration `json:"duration"`
-	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+	Name         string       `json:"name"`
+	Status       HealthStatus `json:"status"`
+	Message      string       `json:"message,omitempty"`
+	Error        string       `json:"error,omitempty"`
+	Timestamp    time.Time    `json:"timestamp"`
+	Duration     time.Duration `json:"duration"`
+	ResponseTime int64        `json:"response_time_ms"`
+	Details      map[string]interface{} `json:"details,omitempty"`
+	Metadata     map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // HealthResponse 健康检查响应
@@ -99,13 +100,15 @@ type HealthConfig struct {
 
 // HealthStats 健康检查统计
 type HealthStats struct {
-	TotalChecks     int64 `json:"total_checks"`
-	HealthyChecks   int64 `json:"healthy_checks"`
-	UnhealthyChecks int64 `json:"unhealthy_checks"`
-	AverageLatency  int64 `json:"average_latency_ms"`
-	LastCheckTime   int64 `json:"last_check_time"`
-	Uptime          int64 `json:"uptime_seconds"`
-	StartTime       int64 `json:"start_time"`
+	TotalChecks         int64   `json:"total_checks"`
+	HealthyChecks       int64   `json:"healthy_checks"`
+	UnhealthyChecks     int64   `json:"unhealthy_checks"`
+	DegradedChecks      int64   `json:"degraded_checks"`
+	AverageLatency      int64   `json:"average_latency_ms"`
+	AverageResponseTime float64 `json:"average_response_time_ms"`
+	LastCheckTime       time.Time `json:"last_check_time"`
+	Uptime              int64   `json:"uptime_seconds"`
+	StartTime           int64   `json:"start_time"`
 }
 
 // DefaultHealthConfig 返回默认健康检查配置
@@ -450,7 +453,7 @@ func (h *HealthManager) updateStats(status HealthStatus, duration time.Duration)
 	defer h.mu.Unlock()
 
 	h.stats.TotalChecks++
-	h.stats.LastCheckTime = time.Now().Unix()
+	h.stats.LastCheckTime = time.Now()
 
 	if status == HealthStatusHealthy {
 		h.stats.HealthyChecks++

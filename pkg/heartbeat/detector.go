@@ -1,4 +1,4 @@
-﻿// Package heartbeat 心跳检测和重连机制实现
+// Package heartbeat 心跳检测和重连机制实现
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -328,8 +328,8 @@ func (h *HeartbeatDetector) sendHeartbeat(msg *HeartbeatMessage) error {
 	}
 
 	// 创建核心消息
-	coreMsg := &core.BaseMessage{
-		MsgType:   core.MessageTypeJSON,
+	coreMsg := &core.Message{
+		Type:      core.MessageTypeJSON,
 		Timestamp: time.Now(),
 		Headers:   map[string]string{"type": "heartbeat"},
 	}
@@ -341,7 +341,7 @@ func (h *HeartbeatDetector) sendHeartbeat(msg *HeartbeatMessage) error {
 	}
 	coreMsg.Data = data
 
-	return h.connection.SendMessage(coreMsg)
+	return h.connection.SendMessage(*coreMsg)
 }
 
 // onHeartbeatTimeout 心跳超时处理

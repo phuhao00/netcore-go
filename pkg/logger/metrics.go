@@ -1,4 +1,4 @@
-﻿// Package logger provides high-performance logging functionality for NetCore-Go
+// Package logger provides high-performance logging functionality for NetCore-Go
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -10,72 +10,90 @@ import (
 	"time"
 )
 
-// Metrics `n`ntype Metrics struct {
+// Metrics 日志指标统计
+type Metrics struct {
 	mu sync.RWMutex
 	
-	// `n�?	TotalLogs     int64 `json:"total_logs"`     // `n
-	DroppedLogs   int64 `json:"dropped_logs"`   // `n
-	ErrorLogs     int64 `json:"error_logs"`     // `n�?	WriteErrors   int64 `json:"write_errors"`   // `n�?	FormatErrors  int64 `json:"format_errors"`  // `n
+	// 基础统计
+	TotalLogs    int64 // 总日志数
+	DroppedLogs  int64 // 丢弃的日志数
+	ErrorLogs    int64 // 错误日志数
+	WriteErrors  int64 // 写入错误数
+	FormatErrors int64 // 格式化错误数
 	
-	// `n
-	TotalWriteTime   int64 `json:"total_write_time_ns"`   // `n�?`n)
-	TotalFormatTime  int64 `json:"total_format_time_ns"`  // `n(`n)
-	MaxWriteTime     int64 `json:"max_write_time_ns"`     // `n�?`n)
-	MaxFormatTime    int64 `json:"max_format_time_ns"`    // `n(`n)
+	// 性能统计
+	TotalWriteTime  int64 // 总写入时间(纳秒)
+	TotalFormatTime int64 // 总格式化时间(纳秒)
+	MaxWriteTime    int64 // 最大写入时间(纳秒)
+	MaxFormatTime   int64 // 最大格式化时间(纳秒)
 	
-	// `n
-	LevelCounts map[Level]int64 `json:"level_counts"` // `n�?	
-	// `n
-	StartTime time.Time `json:"start_time"` // `n�?	LastReset time.Time `json:"last_reset"` // `n
+	// 级别统计
+	LevelCounts map[Level]int64
 	
-	// `n�?	BufferSize     int64 `json:"buffer_size"`     // `n�?	BufferUsage    int64 `json:"buffer_usage"`    // `n
-	MaxBufferUsage int64 `json:"max_buffer_usage"` // `n�?	
-	// `n
-	SampledLogs  int64 `json:"sampled_logs"`  // `n
-	SkippedLogs  int64 `json:"skipped_logs"`  // `n
-	SampleRate   float64 `json:"sample_rate"`   // `n�?}
+	// 时间统计
+	StartTime time.Time
+	LastReset time.Time
+	
+	// 缓冲区统计
+	BufferSize     int64 // 缓冲区大小
+	BufferUsage    int64 // 缓冲区使用量
+	MaxBufferUsage int64 // 最大缓冲区使用量
+	
+	// 采样统计
+	SampledLogs int64   // 采样日志数
+	SkippedLogs int64   // 跳过日志数
+	SampleRate  float64 // 采样率
+}
 
-// NewMetrics `n`nfunc NewMetrics() *Metrics {
-	now := time.Now()
+// NewMetrics 创建新的指标统计
+func NewMetrics() *Metrics {
 	return &Metrics{
 		LevelCounts: make(map[Level]int64),
-		StartTime:   now,
-		LastReset:   now,
-		SampleRate:  1.0, // `n100%`n
+		StartTime:   time.Now(),
+		LastReset:   time.Now(),
+		SampleRate:  1.0,
 	}
 }
 
-// IncrementTotal `n�?func (m *Metrics) IncrementTotal() {
+// IncrementTotal 增加总日志计数
+func (m *Metrics) IncrementTotal() {
 	atomic.AddInt64(&m.TotalLogs, 1)
 }
 
-// IncrementDropped `n`nfunc (m *Metrics) IncrementDropped() {
+// IncrementDropped 增加丢弃日志计数
+func (m *Metrics) IncrementDropped() {
 	atomic.AddInt64(&m.DroppedLogs, 1)
 }
 
-// IncrementError `n`nfunc (m *Metrics) IncrementError() {
+// IncrementError 增加错误日志计数
+func (m *Metrics) IncrementError() {
 	atomic.AddInt64(&m.ErrorLogs, 1)
 }
 
-// IncrementWriteError `n`nfunc (m *Metrics) IncrementWriteError() {
+// IncrementWriteError 增加写入错误计数
+func (m *Metrics) IncrementWriteError() {
 	atomic.AddInt64(&m.WriteErrors, 1)
 }
 
-// IncrementFormatError `n�?func (m *Metrics) IncrementFormatError() {
+// IncrementFormatError 增加格式化错误计数
+func (m *Metrics) IncrementFormatError() {
 	atomic.AddInt64(&m.FormatErrors, 1)
 }
 
-// IncrementLevel `n�?func (m *Metrics) IncrementLevel(level Level) {
+// IncrementLevel 增加特定级别的日志计数
+func (m *Metrics) IncrementLevel(level Level) {
 	m.mu.Lock()
 	m.LevelCounts[level]++
 	m.mu.Unlock()
 }
 
-// AddWriteTime `n`nfunc (m *Metrics) AddWriteTime(duration time.Duration) {
+// AddWriteTime 添加写入时间统计
+func (m *Metrics) AddWriteTime(duration time.Duration) {
 	ns := duration.Nanoseconds()
 	atomic.AddInt64(&m.TotalWriteTime, ns)
 	
-	// `n�?	for {
+	// 更新最大写入时间
+	for {
 		current := atomic.LoadInt64(&m.MaxWriteTime)
 		if ns <= current || atomic.CompareAndSwapInt64(&m.MaxWriteTime, current, ns) {
 			break
@@ -83,11 +101,13 @@ import (
 	}
 }
 
-// AddFormatTime `n�?func (m *Metrics) AddFormatTime(duration time.Duration) {
+// AddFormatTime 添加格式化时间统计
+func (m *Metrics) AddFormatTime(duration time.Duration) {
 	ns := duration.Nanoseconds()
 	atomic.AddInt64(&m.TotalFormatTime, ns)
 	
-	// `n`nfor {
+	// 更新最大格式化时间
+	for {
 		current := atomic.LoadInt64(&m.MaxFormatTime)
 		if ns <= current || atomic.CompareAndSwapInt64(&m.MaxFormatTime, current, ns) {
 			break
@@ -95,10 +115,12 @@ import (
 	}
 }
 
-// UpdateBufferUsage `n`nfunc (m *Metrics) UpdateBufferUsage(usage int64) {
+// UpdateBufferUsage 更新缓冲区使用量统计
+func (m *Metrics) UpdateBufferUsage(usage int64) {
 	atomic.StoreInt64(&m.BufferUsage, usage)
 	
-	// `n�?	for {
+	// 更新最大缓冲区使用量
+	for {
 		current := atomic.LoadInt64(&m.MaxBufferUsage)
 		if usage <= current || atomic.CompareAndSwapInt64(&m.MaxBufferUsage, current, usage) {
 			break
@@ -106,21 +128,25 @@ import (
 	}
 }
 
-// IncrementSampled `n`nfunc (m *Metrics) IncrementSampled() {
+// IncrementSampled 增加采样日志计数
+func (m *Metrics) IncrementSampled() {
 	atomic.AddInt64(&m.SampledLogs, 1)
 }
 
-// IncrementSkipped `n`nfunc (m *Metrics) IncrementSkipped() {
+// IncrementSkipped 增加跳过日志计数
+func (m *Metrics) IncrementSkipped() {
 	atomic.AddInt64(&m.SkippedLogs, 1)
 }
 
-// SetSampleRate `n�?func (m *Metrics) SetSampleRate(rate float64) {
+// SetSampleRate 设置采样率
+func (m *Metrics) SetSampleRate(rate float64) {
 	m.mu.Lock()
 	m.SampleRate = rate
 	m.mu.Unlock()
 }
 
-// GetSnapshot `n`nfunc (m *Metrics) GetSnapshot() *MetricsSnapshot {
+// GetSnapshot 获取指标快照
+func (m *Metrics) GetSnapshot() *MetricsSnapshot {
 	m.mu.RLock()
 	levelCounts := make(map[Level]int64)
 	for k, v := range m.LevelCounts {
@@ -153,7 +179,8 @@ import (
 	}
 }
 
-// Reset `n`nfunc (m *Metrics) Reset() {
+// Reset 重置所有指标统计
+func (m *Metrics) Reset() {
 	atomic.StoreInt64(&m.TotalLogs, 0)
 	atomic.StoreInt64(&m.DroppedLogs, 0)
 	atomic.StoreInt64(&m.ErrorLogs, 0)
@@ -176,7 +203,8 @@ import (
 	m.mu.Unlock()
 }
 
-// MetricsSnapshot `n`ntype MetricsSnapshot struct {
+// MetricsSnapshot 指标快照
+type MetricsSnapshot struct {
 	TotalLogs        int64             `json:"total_logs"`
 	DroppedLogs      int64             `json:"dropped_logs"`
 	ErrorLogs        int64             `json:"error_logs"`
@@ -197,7 +225,7 @@ import (
 	SampleRate       float64           `json:"sample_rate"`
 }
 
-// GetAverageWriteTime `n(`n)
+// GetAverageWriteTime 获取平均写入时间(纳秒)
 func (s *MetricsSnapshot) GetAverageWriteTime() float64 {
 	if s.TotalLogs == 0 {
 		return 0
@@ -205,7 +233,7 @@ func (s *MetricsSnapshot) GetAverageWriteTime() float64 {
 	return float64(s.TotalWriteTime) / float64(s.TotalLogs)
 }
 
-// GetAverageFormatTime `n�?`n)
+// GetAverageFormatTime 获取平均格式化时间(纳秒)
 func (s *MetricsSnapshot) GetAverageFormatTime() float64 {
 	if s.TotalLogs == 0 {
 		return 0
@@ -213,7 +241,8 @@ func (s *MetricsSnapshot) GetAverageFormatTime() float64 {
 	return float64(s.TotalFormatTime) / float64(s.TotalLogs)
 }
 
-// GetLogsPerSecond `n�?func (s *MetricsSnapshot) GetLogsPerSecond() float64 {
+// GetLogsPerSecond 获取每秒日志数
+func (s *MetricsSnapshot) GetLogsPerSecond() float64 {
 	duration := time.Since(s.StartTime).Seconds()
 	if duration == 0 {
 		return 0
@@ -221,14 +250,16 @@ func (s *MetricsSnapshot) GetAverageFormatTime() float64 {
 	return float64(s.TotalLogs) / duration
 }
 
-// GetErrorRate `n�?func (s *MetricsSnapshot) GetErrorRate() float64 {
+// GetErrorRate 获取错误率
+func (s *MetricsSnapshot) GetErrorRate() float64 {
 	if s.TotalLogs == 0 {
 		return 0
 	}
 	return float64(s.ErrorLogs) / float64(s.TotalLogs)
 }
 
-// GetDropRate `n�?func (s *MetricsSnapshot) GetDropRate() float64 {
+// GetDropRate 获取丢弃率
+func (s *MetricsSnapshot) GetDropRate() float64 {
 	total := s.TotalLogs + s.DroppedLogs
 	if total == 0 {
 		return 0
@@ -236,153 +267,19 @@ func (s *MetricsSnapshot) GetAverageFormatTime() float64 {
 	return float64(s.DroppedLogs) / float64(total)
 }
 
-// GetBufferUtilization `n`nfunc (s *MetricsSnapshot) GetBufferUtilization() float64 {
+// GetBufferUtilization 获取缓冲区利用率
+func (s *MetricsSnapshot) GetBufferUtilization() float64 {
 	if s.BufferSize == 0 {
 		return 0
 	}
 	return float64(s.BufferUsage) / float64(s.BufferSize)
 }
 
-// GetSamplingEfficiency `n`nfunc (s *MetricsSnapshot) GetSamplingEfficiency() float64 {
+// GetSamplingEfficiency 获取采样效率
+func (s *MetricsSnapshot) GetSamplingEfficiency() float64 {
 	total := s.SampledLogs + s.SkippedLogs
 	if total == 0 {
 		return 0
 	}
 	return float64(s.SampledLogs) / float64(total)
 }
-
-// PerformanceMonitor `n�?type PerformanceMonitor struct {
-	mu      sync.RWMutex
-	metrics *Metrics
-	enabled bool
-	
-	// `n�?	maxWriteTime   time.Duration // `n�?	maxFormatTime  time.Duration // `n�?	maxErrorRate   float64       // `n�?	maxDropRate    float64       // `n�?	
-	// `n
-	onSlowWrite   func(duration time.Duration)
-	onSlowFormat  func(duration time.Duration)
-	onHighError   func(rate float64)
-	onHighDrop    func(rate float64)
-}
-
-// NewPerformanceMonitor `n�?func NewPerformanceMonitor() *PerformanceMonitor {
-	return &PerformanceMonitor{
-		metrics:       NewMetrics(),
-		enabled:       true,
-		maxWriteTime:  100 * time.Millisecond,  // `n100ms`n�?		maxFormatTime: 10 * time.Millisecond,   // `n10ms`n�?		maxErrorRate:  0.01,                    // `n1%`n�?		maxDropRate:   0.05,                    // `n5%`n�?	}
-}
-
-// SetEnabled `n`nfunc (pm *PerformanceMonitor) SetEnabled(enabled bool) {
-	pm.mu.Lock()
-	pm.enabled = enabled
-	pm.mu.Unlock()
-}
-
-// IsEnabled `n�?func (pm *PerformanceMonitor) IsEnabled() bool {
-	pm.mu.RLock()
-	enabled := pm.enabled
-	pm.mu.RUnlock()
-	return enabled
-}
-
-// GetMetrics `n`nfunc (pm *PerformanceMonitor) GetMetrics() *Metrics {
-	return pm.metrics
-}
-
-// SetThresholds `n�?func (pm *PerformanceMonitor) SetThresholds(maxWriteTime, maxFormatTime time.Duration, maxErrorRate, maxDropRate float64) {
-	pm.mu.Lock()
-	pm.maxWriteTime = maxWriteTime
-	pm.maxFormatTime = maxFormatTime
-	pm.maxErrorRate = maxErrorRate
-	pm.maxDropRate = maxDropRate
-	pm.mu.Unlock()
-}
-
-// SetCallbacks `n`nfunc (pm *PerformanceMonitor) SetCallbacks(
-	onSlowWrite func(duration time.Duration),
-	onSlowFormat func(duration time.Duration),
-	onHighError func(rate float64),
-	onHighDrop func(rate float64),
-) {
-	pm.mu.Lock()
-	pm.onSlowWrite = onSlowWrite
-	pm.onSlowFormat = onSlowFormat
-	pm.onHighError = onHighError
-	pm.onHighDrop = onHighDrop
-	pm.mu.Unlock()
-}
-
-// RecordWrite `n`nfunc (pm *PerformanceMonitor) RecordWrite(duration time.Duration, err error) {
-	if !pm.IsEnabled() {
-		return
-	}
-	
-	pm.metrics.AddWriteTime(duration)
-	
-	if err != nil {
-		pm.metrics.IncrementWriteError()
-	}
-	
-	// `n
-	pm.mu.RLock()
-	maxWriteTime := pm.maxWriteTime
-	onSlowWrite := pm.onSlowWrite
-	pm.mu.RUnlock()
-	
-	if duration > maxWriteTime && onSlowWrite != nil {
-		onSlowWrite(duration)
-	}
-}
-
-// RecordFormat `n�?func (pm *PerformanceMonitor) RecordFormat(duration time.Duration, err error) {
-	if !pm.IsEnabled() {
-		return
-	}
-	
-	pm.metrics.AddFormatTime(duration)
-	
-	if err != nil {
-		pm.metrics.IncrementFormatError()
-	}
-	
-	// `n�?	pm.mu.RLock()
-	maxFormatTime := pm.maxFormatTime
-	onSlowFormat := pm.onSlowFormat
-	pm.mu.RUnlock()
-	
-	if duration > maxFormatTime && onSlowFormat != nil {
-		onSlowFormat(duration)
-	}
-}
-
-// CheckThresholds `n�?func (pm *PerformanceMonitor) CheckThresholds() {
-	if !pm.IsEnabled() {
-		return
-	}
-	
-	snapshot := pm.metrics.GetSnapshot()
-	
-	pm.mu.RLock()
-	maxErrorRate := pm.maxErrorRate
-	maxDropRate := pm.maxDropRate
-	onHighError := pm.onHighError
-	onHighDrop := pm.onHighDrop
-	pm.mu.RUnlock()
-	
-	// `n
-	errorRate := snapshot.GetErrorRate()
-	if errorRate > maxErrorRate && onHighError != nil {
-		onHighError(errorRate)
-	}
-	
-	// `n
-	dropRate := snapshot.GetDropRate()
-	if dropRate > maxDropRate && onHighDrop != nil {
-		onHighDrop(dropRate)
-	}
-}
-
-
-
-
-
-

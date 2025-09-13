@@ -1,4 +1,4 @@
-﻿// Package main HTTP服务器示例
+// Package main HTTP服务器示例
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -292,13 +292,11 @@ func main() {
 	server.SetHandler(handler)
 
 	// 设置路由
-	if httpServer, ok := server.(*http.HTTPServer); ok {
-		handler.setupRoutes(httpServer)
-	}
+	handler.setupRoutes(server)
 
 	// 启动服务器
 	go func() {
-		if err := server.Start(":8083"); err != nil {
+		if err := server.StartWithAddr(":8083"); err != nil {
 			log.Fatalf("Failed to start HTTP server: %v", err)
 		}
 	}()

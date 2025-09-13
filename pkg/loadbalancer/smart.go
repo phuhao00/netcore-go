@@ -12,64 +12,31 @@ import (
 	"time"
 )
 
-// LoadBalanceStrategy 负载均衡策略
-type LoadBalanceStrategy int
+// AdaptiveLoadBalancing 自适应负载均衡策略
+const AdaptiveLoadBalancing Algorithm = "adaptive"
 
-const (
-	// RoundRobin 轮询
-	RoundRobin LoadBalanceStrategy = iota
-	// WeightedRoundRobin 加权轮询
-	WeightedRoundRobin
-	// LeastConnections 最少连接
-	LeastConnections
-	// WeightedLeastConnections 加权最少连接
-	WeightedLeastConnections
-	// IPHash IP哈希
-	IPHash
-	// ConsistentHash 一致性哈希
-	ConsistentHash
-	// Random 随机
-	Random
-	// WeightedRandom 加权随机
-	WeightedRandom
-	// LeastResponseTime 最短响应时间
-	LeastResponseTime
-	// AdaptiveLoadBalancing 自适应负载均衡
-	AdaptiveLoadBalancing
-)
+// LoadBalanceStrategy 负载均衡策略类型
+type LoadBalanceStrategy Algorithm
 
-// String 返回策略名称
-func (s LoadBalanceStrategy) String() string {
-	switch s {
-	case RoundRobin:
-		return "round_robin"
-	case WeightedRoundRobin:
-		return "weighted_round_robin"
-	case LeastConnections:
-		return "least_connections"
-	case WeightedLeastConnections:
-		return "weighted_least_connections"
-	case IPHash:
-		return "ip_hash"
-	case ConsistentHash:
-		return "consistent_hash"
-	case Random:
-		return "random"
-	case WeightedRandom:
-		return "weighted_random"
-	case LeastResponseTime:
-		return "least_response_time"
-	case AdaptiveLoadBalancing:
-		return "adaptive"
-	default:
-		return "unknown"
-	}
+// WeightedLeastConnections 加权最少连接算法
+const WeightedLeastConnections Algorithm = "weighted_least_connections"
+
+// String 返回算法的字符串表示
+func (a Algorithm) String() string {
+	return string(a)
 }
+
+// String 返回策略的字符串表示
+func (s LoadBalanceStrategy) String() string {
+	return string(s)
+}
+
+
 
 // SmartLoadBalancerConfig 智能负载均衡配置
 type SmartLoadBalancerConfig struct {
 	// 负载均衡策略
-	Strategy LoadBalanceStrategy `json:"strategy" yaml:"strategy"`
+	Strategy Algorithm `json:"strategy" yaml:"strategy"`
 	// 健康检查间隔
 	HealthCheckInterval time.Duration `json:"health_check_interval" yaml:"health_check_interval"`
 	// 健康检查超时
@@ -257,7 +224,7 @@ type SmartLoadBalancer struct {
 	backends         []*Backend
 	currentIndex     int64
 	sessions         map[string]*Backend // 会话保持
-	consistentHash   *ConsistentHash
+	consistentHash   *ConsistentHashRing
 	mu               sync.RWMutex
 	running          bool
 	cancel           context.CancelFunc
@@ -288,7 +255,7 @@ func NewSmartLoadBalancer(config *SmartLoadBalancerConfig) *SmartLoadBalancer {
 		config:          config,
 		backends:        make([]*Backend, 0),
 		sessions:        make(map[string]*Backend),
-		consistentHash:  NewConsistentHash(100, nil),
+		consistentHash:  NewConsistentHashRing(100, nil),
 		stats:           &LoadBalancerStats{},
 		adaptiveWeights: make(map[string]float64),
 		rand:           rand.New(rand.NewSource(time.Now().UnixNano())),
@@ -829,13 +796,13 @@ func (lb *SmartLoadBalancer) SetStrategy(strategy LoadBalanceStrategy) {
 	lb.mu.Lock()
 	defer lb.mu.Unlock()
 
-	lb.config.Strategy = strategy
+	lb.config.Strategy = Algorithm(strategy)
 	lb.stats.LastStrategySwitch = time.Now()
 	lb.stats.CurrentStrategy = strategy.String()
 }
 
-// ConsistentHash 一致性哈希实现
-type ConsistentHash struct {
+// ConsistentHashRing 一致性哈希环实现
+type ConsistentHashRing struct {
 	hash     func(data []byte) uint32
 	replicas int
 	keys     []int // Sorted
@@ -843,9 +810,9 @@ type ConsistentHash struct {
 	mu       sync.RWMutex
 }
 
-// NewConsistentHash 创建一致性哈希
-func NewConsistentHash(replicas int, fn func([]byte) uint32) *ConsistentHash {
-	m := &ConsistentHash{
+// NewConsistentHashRing 创建一致性哈希环
+func NewConsistentHashRing(replicas int, fn func([]byte) uint32) *ConsistentHashRing {
+	m := &ConsistentHashRing{
 		replicas: replicas,
 		hash:     fn,
 		hashMap:  make(map[int]string),
@@ -863,7 +830,7 @@ func NewConsistentHash(replicas int, fn func([]byte) uint32) *ConsistentHash {
 }
 
 // Add 添加节点
-func (m *ConsistentHash) Add(keys ...string) {
+func (m *ConsistentHashRing) Add(keys ...string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -878,7 +845,7 @@ func (m *ConsistentHash) Add(keys ...string) {
 }
 
 // Remove 移除节点
-func (m *ConsistentHash) Remove(key string) {
+func (m *ConsistentHashRing) Remove(key string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -897,7 +864,7 @@ func (m *ConsistentHash) Remove(key string) {
 }
 
 // Get 获取节点
-func (m *ConsistentHash) Get(key string) string {
+func (m *ConsistentHashRing) Get(key string) string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 

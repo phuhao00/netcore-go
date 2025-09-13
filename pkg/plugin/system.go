@@ -9,12 +9,9 @@ import (
 	"fmt"
 	"net/http"
 	"plugin"
-	"reflect"
 	"sort"
 	"sync"
 	"time"
-
-	"github.com/netcore-go/pkg/core"
 )
 
 // PluginType 插件类型

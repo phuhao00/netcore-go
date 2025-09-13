@@ -1,4 +1,4 @@
-﻿// Package main RPC客户端示例
+// Package main RPC客户端示例
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -6,7 +6,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 

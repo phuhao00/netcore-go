@@ -74,7 +74,7 @@ type MockWatcher interface {
 
 type MockWatchEvent struct {
 	Type   string
-	Object *MockService
+	Object interface{}
 }
 
 type mockKubernetesClient struct{

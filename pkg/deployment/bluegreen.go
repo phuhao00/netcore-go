@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/netcore-go/pkg/core"
 	"github.com/netcore-go/pkg/health"
 )
 

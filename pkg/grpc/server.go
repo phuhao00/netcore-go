@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/netcore-go/pkg/core"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -206,9 +208,48 @@ func (s *GRPCServer) loggingInterceptor(ctx context.Context, req interface{}, in
 	return resp, err
 }
 
+var (
+	// gRPC服务器指标
+	grpcServerRequestsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "grpc_server_requests_total",
+			Help: "Total number of gRPC server requests",
+		},
+		[]string{"method", "status"},
+	)
+	
+	grpcServerRequestDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name: "grpc_server_request_duration_seconds",
+			Help: "Duration of gRPC server requests in seconds",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"method", "status"},
+	)
+	
+	grpcServerActiveRequests = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "grpc_server_active_requests",
+			Help: "Number of active gRPC server requests",
+		},
+		[]string{"method"},
+	)
+	
+	grpcServerConnections = promauto.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "grpc_server_connections",
+			Help: "Number of active gRPC server connections",
+		},
+	)
+)
+
 // metricsInterceptor 指标拦截器
 func (s *GRPCServer) metricsInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	start := time.Now()
+	
+	// 增加活跃请求计数
+	grpcServerActiveRequests.WithLabelValues(info.FullMethod).Inc()
+	defer grpcServerActiveRequests.WithLabelValues(info.FullMethod).Dec()
 	
 	// 调用处理器
 	resp, err := handler(ctx, req)
@@ -220,7 +261,10 @@ func (s *GRPCServer) metricsInterceptor(ctx context.Context, req interface{}, in
 		status = "error"
 	}
 	
-	// TODO: 集成实际的指标收集系统（如Prometheus）
+	// 记录Prometheus指标
+	grpcServerRequestsTotal.WithLabelValues(info.FullMethod, status).Inc()
+	grpcServerRequestDuration.WithLabelValues(info.FullMethod, status).Observe(duration.Seconds())
+	
 	fmt.Printf("[gRPC Metrics] method=%s, status=%s, duration=%v\n", info.FullMethod, status, duration)
 	
 	return resp, err

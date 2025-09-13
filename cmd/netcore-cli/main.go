@@ -8,7 +8,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,7 +15,6 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // Version 版本信息
@@ -33,10 +31,12 @@ type ProjectConfig struct {
 	Author      string            `json:"author"`
 	Email       string            `json:"email"`
 	Version     string            `json:"version"`
+	License     string            `json:"license"`
 	GoVersion   string            `json:"go_version"`
 	ModulePath  string            `json:"module_path"`
-	Features    []string          `json:"features"`
-	Database    string            `json:"database"`
+	Features    *FeatureConfig    `json:"features"`
+	Database    *DatabaseConfig   `json:"database"`
+	Server      *ServerConfig     `json:"server"`
 	Cache       string            `json:"cache"`
 	Auth        string            `json:"auth"`
 	Middleware  []string          `json:"middleware"`
@@ -44,6 +44,37 @@ type ProjectConfig struct {
 	Deployment  string            `json:"deployment"`
 	Environment map[string]string `json:"environment"`
 	CreatedAt   time.Time         `json:"created_at"`
+}
+
+// DatabaseConfig 数据库配置
+type DatabaseConfig struct {
+	Type     string `json:"type"`
+	Host     string `json:"host"`
+	Port     int    `json:"port"`
+	Name     string `json:"name"`
+	User     string `json:"user"`
+	Password string `json:"password"`
+	SSLMode  string `json:"ssl_mode"`
+}
+
+// ServerConfig 服务器配置
+type ServerConfig struct {
+	Host         string        `json:"host"`
+	Port         int           `json:"port"`
+	ReadTimeout  time.Duration `json:"read_timeout"`
+	WriteTimeout time.Duration `json:"write_timeout"`
+	IdleTimeout  time.Duration `json:"idle_timeout"`
+}
+
+// FeatureConfig 功能配置
+type FeatureConfig struct {
+	Auth       bool `json:"auth"`
+	Logging    bool `json:"logging"`
+	Metrics    bool `json:"metrics"`
+	Tracing    bool `json:"tracing"`
+	Swagger    bool `json:"swagger"`
+	Docker     bool `json:"docker"`
+	Kubernetes bool `json:"kubernetes"`
 }
 
 // TemplateData 模板数据
@@ -251,10 +282,13 @@ func runInteractiveSetup(config *ProjectConfig, initialName string) error {
 	}
 	featuresStr = strings.TrimSpace(featuresStr)
 	if featuresStr != "" {
-		config.Features = strings.Split(featuresStr, ",")
-		for i, feature := range config.Features {
-			config.Features[i] = strings.TrimSpace(feature)
+		features := strings.Split(featuresStr, ",")
+		for i, feature := range features {
+			features[i] = strings.TrimSpace(feature)
 		}
+		// 这里需要根据实际需求设置Features字段
+		config.Features = &FeatureConfig{}
+		// 可以根据features切片设置具体的功能开关
 	}
 
 	// 数据库选择
@@ -263,7 +297,9 @@ func runInteractiveSetup(config *ProjectConfig, initialName string) error {
 	if err != nil {
 		return err
 	}
-	config.Database = strings.TrimSpace(db)
+	config.Database = &DatabaseConfig{
+			Type: strings.TrimSpace(db),
+		}
 
 	// 缓存选择
 	fmt.Println("Cache (redis/memcached/in-memory/none): ")
@@ -310,11 +346,14 @@ func setupFromFlags(cmd *cobra.Command, config *ProjectConfig, projectName strin
 	}
 
 	if features, _ := cmd.Flags().GetStringSlice("features"); len(features) > 0 {
-		config.Features = features
+		config.Features = &FeatureConfig{}
+		// 根据features设置具体功能
 	}
 
 	if db, _ := cmd.Flags().GetString("database"); db != "" {
-		config.Database = db
+		config.Database = &DatabaseConfig{
+			Type: db,
+		}
 	}
 
 	if cache, _ := cmd.Flags().GetString("cache"); cache != "" {
@@ -450,41 +489,6 @@ func generateFile(projectDir, filename, templateStr string, data *TemplateData) 
 	defer file.Close()
 
 	return tmpl.Execute(file, data)
-}
-
-// generate 命令 - 代码生成
-var generateCmd = &cobra.Command{
-	Use:   "generate [type] [name]",
-	Short: "Generate code components",
-	Long:  `Generate various code components like handlers, models, services, etc.`,
-	Args:  cobra.ExactArgs(2),
-	RunE:  runGenerate,
-}
-
-func init() {
-	generateCmd.Flags().StringP("template", "t", "", "template to use")
-	generateCmd.Flags().StringSliceP("fields", "f", []string{}, "fields for model generation")
-	generateCmd.Flags().BoolP("crud", "c", false, "generate CRUD operations")
-}
-
-func runGenerate(cmd *cobra.Command, args []string) error {
-	generateType := args[0]
-	name := args[1]
-
-	switch generateType {
-	case "handler":
-		return generateHandler(name)
-	case "model":
-		return generateModel(name, cmd)
-	case "service":
-		return generateService(name)
-	case "middleware":
-		return generateMiddleware(name)
-	case "test":
-		return generateTest(name)
-	default:
-		return fmt.Errorf("unknown generate type: %s", generateType)
-	}
 }
 
 // Generate functions are implemented in generate.go
@@ -662,3 +666,128 @@ func runBuild(cmd *cobra.Command, args []string) error {
 }
 
 // Deploy command is implemented in deploy.go
+
+// Template definitions
+const (
+	goModTemplate = `module {{.Project.Name}}
+
+go 1.21
+
+require (
+	github.com/gin-gonic/gin v1.9.1
+	github.com/spf13/cobra v1.7.0
+	github.com/spf13/viper v1.16.0
+)
+`
+
+	mainGoTemplate = `package main
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
+
+func main() {
+	r := gin.Default()
+	r.GET("/", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Hello from {{.Project.Name}}!",
+		})
+	})
+
+	fmt.Println("Starting {{.Project.Name}} server...")
+	log.Fatal(r.Run(":8080"))
+}
+`
+
+	readmeTemplate = `# {{.Project.Name}}
+
+{{.Project.Description}}
+
+## Author
+{{.Project.Author}}
+
+## License
+{{.Project.License}}
+
+## Getting Started
+
+` + "`" + `bash
+go run cmd/main.go
+` + "`" + `
+`
+
+	dockerfileTemplate = `FROM golang:1.21-alpine AS builder
+
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN go build -o main cmd/main.go
+
+FROM alpine:latest
+RUN apk --no-cache add ca-certificates
+WORKDIR /root/
+COPY --from=builder /app/main .
+EXPOSE 8080
+CMD ["./main"]
+`
+
+	gitignoreTemplate = `# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+
+# Test binary
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Go workspace file
+go.work
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+`
+
+	makefileTemplate = `# {{.Project.Name}} Makefile
+
+.PHONY: build run test clean
+
+build:
+	go build -o bin/{{.Project.Name}} cmd/main.go
+
+run:
+	go run cmd/main.go
+
+test:
+	go test ./...
+
+clean:
+	rm -rf bin/
+`
+
+	configTemplate = `# {{.Project.Name}} Configuration
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+
+log:
+  level: "info"
+  format: "json"
+`
+)

@@ -5,6 +5,7 @@
 package http
 
 import (
+	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -277,6 +278,42 @@ func (m *RecoveryMiddleware) Handle(ctx *HTTPContext, resp *HTTPResponse, next H
 	}()
 
 	// 继续处理请求
+	if next != nil {
+		next.ServeHTTP(ctx, resp)
+	}
+}
+
+// 函数形式的中间件，用于兼容性
+
+// DefaultCORSMiddleware 返回默认CORS中间件函数
+func DefaultCORSMiddleware() HTTPMiddleware {
+	return NewCORSMiddleware()
+}
+
+// DefaultLoggerMiddleware 返回默认日志中间件函数
+func DefaultLoggerMiddleware() HTTPMiddleware {
+	return NewLoggingMiddleware(nil)
+}
+
+// DefaultRecoveryMiddleware 返回默认恢复中间件函数
+func DefaultRecoveryMiddleware() HTTPMiddleware {
+	return NewRecoveryMiddleware(nil)
+}
+
+// DefaultRequestIDMiddleware 返回默认请求ID中间件函数
+func DefaultRequestIDMiddleware() HTTPMiddleware {
+	return &RequestIDMiddlewareImpl{}
+}
+
+// RequestIDMiddlewareImpl 请求ID中间件实现
+type RequestIDMiddlewareImpl struct{}
+
+// Handle 处理请求ID
+func (m *RequestIDMiddlewareImpl) Handle(ctx *HTTPContext, resp *HTTPResponse, next HTTPHandler) {
+	requestID := fmt.Sprintf("%d", time.Now().UnixNano())
+	resp.Headers["X-Request-ID"] = requestID
+	ctx.Set("request_id", requestID)
+	
 	if next != nil {
 		next.ServeHTTP(ctx, resp)
 	}

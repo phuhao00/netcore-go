@@ -444,7 +444,48 @@ func (s *{{.NameLower}}Service) List(ctx context.Context, limit, offset int) ([]
 
 // validate{{.Name}} 验证{{.Name}}数据
 func (s *{{.NameLower}}Service) validate{{.Name}}({{.NameLower}} *model.{{.Name}}) error {
-	// TODO: 添加业务逻辑验证
+	// 添加业务逻辑验证
+	if {{.NameLower}} == nil {
+		return fmt.Errorf("{{.NameLower}} cannot be nil")
+	}
+	
+	// 验证必填字段
+	if strings.TrimSpace({{.NameLower}}.Name) == "" {
+		return fmt.Errorf("name is required")
+	}
+	
+	// 验证名称长度
+	if len({{.NameLower}}.Name) < 2 {
+		return fmt.Errorf("name must be at least 2 characters long")
+	}
+	
+	if len({{.NameLower}}.Name) > 100 {
+		return fmt.Errorf("name must be less than 100 characters")
+	}
+	
+	// 验证描述长度
+	if len({{.NameLower}}.Description) > 500 {
+		return fmt.Errorf("description must be less than 500 characters")
+	}
+	
+	// 验证状态值
+	validStatuses := []string{"active", "inactive", "pending", "archived"}
+	statusValid := false
+	for _, status := range validStatuses {
+		if {{.NameLower}}.Status == status {
+			statusValid = true
+			break
+		}
+	}
+	if !statusValid {
+		return fmt.Errorf("invalid status: %s, must be one of: %v", {{.NameLower}}.Status, validStatuses)
+	}
+	
+	// 验证业务规则
+	if {{.NameLower}}.Status == "active" && strings.TrimSpace({{.NameLower}}.Description) == "" {
+		return fmt.Errorf("description is required for active {{.NameLower}}s")
+	}
+	
 	return nil
 }
 `
@@ -601,10 +642,17 @@ type {{.Name}} struct {
 	UpdatedAt time.Time ` + "`json:\"updated_at\" gorm:\"autoUpdateTime\"`" + `
 	DeletedAt gorm.DeletedAt ` + "`json:\"-\" gorm:\"index\"`" + `
 	
-	// TODO: 添加具体字段
-	Name        string ` + "`json:\"name\" gorm:\"not null\"`" + `
-	Description string ` + "`json:\"description\"`" + `
-	Status      string ` + "`json:\"status\" gorm:\"default:'active'\"`" + `
+	// 添加具体字段
+	Name        string ` + "`json:\"name\" gorm:\"not null;size:100\" validate:\"required,min=2,max=100\"`" + `
+	Description string ` + "`json:\"description\" gorm:\"size:500\" validate:\"max=500\"`" + `
+	Status      string ` + "`json:\"status\" gorm:\"default:'active';size:20\" validate:\"oneof=active inactive pending archived\"`" + `
+	Email       string ` + "`json:\"email\" gorm:\"size:255;index\" validate:\"omitempty,email\"`" + `
+	Phone       string ` + "`json:\"phone\" gorm:\"size:20\" validate:\"omitempty,min=10,max=20\"`" + `
+	Address     string ` + "`json:\"address\" gorm:\"size:255\"`" + `
+	Tags        string ` + "`json:\"tags\" gorm:\"type:text\"`" + `
+	Metadata    string ` + "`json:\"metadata\" gorm:\"type:jsonb\"`" + `
+	Priority    int    ` + "`json:\"priority\" gorm:\"default:0\" validate:\"min=0,max=10\"`" + `
+	IsPublic    bool   ` + "`json:\"is_public\" gorm:\"default:false\"`" + `
 }
 
 // BeforeCreate GORM钩子：创建前
@@ -742,10 +790,8 @@ const rateLimitMiddlewareTemplate = `// Rate Limit Middleware template content h
 const appConfigTemplate = `// App Config template content here`
 const unitTestTemplate = `// Unit Test template content here`
 const integrationTestTemplate = `// Integration Test template content here`
-const dockerfileTemplate = `// Dockerfile template content here`
 const dockerComposeTemplate = `// Docker Compose template content here`
 const k8sDeploymentTemplate = `// K8s Deployment template content here`
 const k8sServiceTemplate = `// K8s Service template content here`
-const makefileTemplate = `// Makefile template content here`
 const githubActionsTemplate = `// GitHub Actions template content here`
 const gitlabCITemplate = `// GitLab CI template content here`

@@ -8,13 +8,12 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/netcore-go/pkg/udp"
+	"github.com/netcore-go"
 )
 
 // BenchmarkHandler UDP性能测试处理器
@@ -120,10 +119,10 @@ func runBenchmark(clientCount, messageSize int, duration time.Duration) *Benchma
 	handler.Reset()
 
 	// 创建UDP服务器
-	server := udp.NewServer()
-	server.SetReadBufferSize(8192)
-	server.SetWriteBufferSize(8192)
-
+	server := netcore.NewUDPServer(
+		netcore.WithReadBufferSize(8192),
+		netcore.WithWriteBufferSize(8192),
+	)
 	server.SetHandler(handler)
 
 	// 启动服务器
@@ -233,11 +232,13 @@ func printBenchmarkResult(result *BenchmarkResult) {
 	
 	if result.ServerStats != nil {
 		fmt.Printf("\nServer Stats:\n")
-		fmt.Printf("  Active Connections: %d\n", result.ServerStats.ActiveConnections)
-		fmt.Printf("  Total Connections: %d\n", result.ServerStats.TotalConnections)
-		fmt.Printf("  Messages Received: %d\n", result.ServerStats.MessagesReceived)
-		fmt.Printf("  Messages Sent: %d\n", result.ServerStats.MessagesSent)
-		fmt.Printf("  Error Count: %d\n", result.ServerStats.ErrorCount)
+		if stats, ok := result.ServerStats.(*netcore.ServerStats); ok {
+			fmt.Printf("  Active Connections: %d\n", stats.ActiveConnections)
+			fmt.Printf("  Total Connections: %d\n", stats.TotalConnections)
+			fmt.Printf("  Messages Received: %d\n", stats.MessagesReceived)
+			fmt.Printf("  Messages Sent: %d\n", stats.MessagesSent)
+			fmt.Printf("  Error Count: %d\n", stats.ErrorCount)
+		}
 	}
 }
 

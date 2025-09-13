@@ -3,16 +3,15 @@ package config
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 )
 
 // Manager 全局配置管理器
 type Manager struct {
-	mu      sync.RWMutex
-	configs map[string]*Config
-	default *Config
+	mu            sync.RWMutex
+	configs       map[string]*Config
+	defaultConfig *Config
 }
 
 var (
@@ -38,8 +37,8 @@ func (m *Manager) Register(name string, config *Config) {
 	m.configs[name] = config
 	
 	// 如果是第一个注册的配置，设为默认
-	if m.default == nil {
-		m.default = config
+	if m.defaultConfig == nil {
+		m.defaultConfig = config
 	}
 }
 
@@ -56,7 +55,7 @@ func (m *Manager) Default() *Config {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	
-	return m.default
+	return m.defaultConfig
 }
 
 // SetDefault 设置默认配置实例
@@ -64,7 +63,7 @@ func (m *Manager) SetDefault(config *Config) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	
-	m.default = config
+	m.defaultConfig = config
 }
 
 // LoadConfig 加载配置文件

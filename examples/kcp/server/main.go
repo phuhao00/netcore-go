@@ -1,4 +1,4 @@
-﻿// Package main KCP服务器示例
+// Package main KCP服务器示例
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 

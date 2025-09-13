@@ -160,6 +160,30 @@ type LongPollStats struct {
 	ClientCount          int   `json:"client_count"`
 }
 
+// Config 长轮询配置
+type Config struct {
+	MaxHistory      int           `json:"max_history"`
+	CleanupInterval time.Duration `json:"cleanup_interval"`
+	DefaultTimeout  time.Duration `json:"default_timeout"`
+}
+
+// DefaultConfig 返回默认配置
+func DefaultConfig() *Config {
+	return &Config{
+		MaxHistory:      1000,
+		CleanupInterval: 30 * time.Second,
+		DefaultTimeout:  30 * time.Second,
+	}
+}
+
+// NewManager 创建长轮询管理器
+func NewManager(config *Config) *LongPollManager {
+	if config == nil {
+		config = DefaultConfig()
+	}
+	return NewLongPollManager(config.MaxHistory)
+}
+
 // NewLongPollManager 创建长轮询管理器
 func NewLongPollManager(maxHistory int) *LongPollManager {
 	manager := &LongPollManager{

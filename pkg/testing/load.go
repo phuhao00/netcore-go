@@ -7,10 +7,8 @@ package testing
 import (
 	"context"
 	"fmt"
-	"math"
 	"math/rand"
 	"net/http"
-	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -146,16 +144,11 @@ type VolumeTestConfig struct {
 func NewLoadTestRunner(config *LoadTestConfig) *LoadTestRunner {
 	if config == nil {
 		config = &LoadTestConfig{
-			Concurrency:    10,
-			Duration:       1 * time.Minute,
-			RampUpTime:     10 * time.Second,
-			RampDownTime:   10 * time.Second,
-			RequestsPerSec: 100,
-			Thresholds: &Thresholds{
-				MaxResponseTime: 1 * time.Second,
-				MaxErrorRate:    0.01,
-				MinThroughput:   50,
-			},
+			Concurrency: 10,
+			Duration:    1 * time.Minute,
+			RampUp:      10 * time.Second,
+			TargetURL:   "http://localhost:8080",
+			RequestRate: 100,
 		}
 	}
 
@@ -283,7 +276,7 @@ func (ltr *LoadTestRunner) worker(concurrencyChan chan struct{}, requestChan <-c
 
 // generateRequests 生成请求
 func (ltr *LoadTestRunner) generateRequests(requestChan chan<- *LoadTestRequest) {
-	ticker := time.NewTicker(time.Second / time.Duration(ltr.config.RequestsPerSec))
+	ticker := time.NewTicker(time.Second / time.Duration(ltr.config.RequestRate))
 	defer ticker.Stop()
 
 	for {

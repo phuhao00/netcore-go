@@ -12,7 +12,38 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/netcore-go/pkg/core"
 )
+
+// ServerConfig HTTP服务器配置
+type ServerConfig struct {
+	Address string `json:"address"`
+	Port    int    `json:"port"`
+}
+
+// HTTPMiddlewareWrapper 中间件包装器
+type HTTPMiddlewareWrapper struct {
+	middleware HTTPMiddleware
+	name       string
+	priority   int
+}
+
+// Name 返回中间件名称
+func (w *HTTPMiddlewareWrapper) Name() string {
+	return w.name
+}
+
+// Priority 返回中间件优先级
+func (w *HTTPMiddlewareWrapper) Priority() int {
+	return w.priority
+}
+
+// Process 处理消息
+func (w *HTTPMiddlewareWrapper) Process(ctx core.Context, next core.Handler) error {
+	// 这里需要根据实际的core.Middleware接口实现
+	return next(ctx)
+}
 
 // HTTPRequest HTTP请求结构
 type HTTPRequest struct {
@@ -222,4 +253,45 @@ func getStatusText(statusCode int) string {
 // generateConnectionID 生成连接ID
 func generateConnectionID() string {
 	return fmt.Sprintf("http-%d-%d", time.Now().UnixNano(), rand.Int63())
+}
+
+// HTTPMiddleware HTTP中间件接口
+type HTTPMiddleware interface {
+	Handle(ctx *HTTPContext, resp *HTTPResponse, next HTTPHandler)
+}
+
+// RouterGroup 路由组
+type RouterGroup struct {
+	server *HTTPServer
+	prefix string
+}
+
+// GET 注册GET路由
+func (g *RouterGroup) GET(path string, handler HTTPHandlerFunc) {
+	fullPath := g.prefix + path
+	g.server.router.HandleFunc("GET", fullPath, handler)
+}
+
+// POST 注册POST路由
+func (g *RouterGroup) POST(path string, handler HTTPHandlerFunc) {
+	fullPath := g.prefix + path
+	g.server.router.HandleFunc("POST", fullPath, handler)
+}
+
+// PUT 注册PUT路由
+func (g *RouterGroup) PUT(path string, handler HTTPHandlerFunc) {
+	fullPath := g.prefix + path
+	g.server.router.HandleFunc("PUT", fullPath, handler)
+}
+
+// DELETE 注册DELETE路由
+func (g *RouterGroup) DELETE(path string, handler HTTPHandlerFunc) {
+	fullPath := g.prefix + path
+	g.server.router.HandleFunc("DELETE", fullPath, handler)
+}
+
+// PATCH 注册PATCH路由
+func (g *RouterGroup) PATCH(path string, handler HTTPHandlerFunc) {
+	fullPath := g.prefix + path
+	g.server.router.HandleFunc("PATCH", fullPath, handler)
 }

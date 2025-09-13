@@ -6,10 +6,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -182,8 +184,67 @@ func loadProjectConfig(dir string) (*ProjectConfig, error) {
 		return nil, fmt.Errorf("project config not found")
 	}
 	
-	// TODO: 实现配置加载逻辑
-	return nil, fmt.Errorf("not implemented")
+	// 读取配置文件
+	configData, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config file: %w", err)
+	}
+	
+	// 解析JSON配置
+	var config map[string]interface{}
+	if err := json.Unmarshal(configData, &config); err != nil {
+		return nil, fmt.Errorf("failed to parse config file: %w", err)
+	}
+	
+	// 创建项目配置结构
+	projectConfig := &ProjectConfig{
+		Name:        getString(config, "name", ""),
+		Version:     getString(config, "version", "1.0.0"),
+		Description: getString(config, "description", ""),
+		Author:      getString(config, "author", ""),
+		License:     getString(config, "license", "MIT"),
+		GoVersion:   getString(config, "go_version", "1.21"),
+		ModulePath:  getString(config, "module_path", ""),
+	}
+	
+	// 解析数据库配置
+	if dbConfig, ok := config["database"].(map[string]interface{}); ok {
+		projectConfig.Database = &DatabaseConfig{
+			Type:     getString(dbConfig, "type", "sqlite"),
+			Host:     getString(dbConfig, "host", "localhost"),
+			Port:     getInt(dbConfig, "port", 5432),
+			Name:     getString(dbConfig, "name", "app"),
+			User:     getString(dbConfig, "user", ""),
+			Password: getString(dbConfig, "password", ""),
+			SSLMode:  getString(dbConfig, "ssl_mode", "disable"),
+		}
+	}
+	
+	// 解析服务器配置
+	if serverConfig, ok := config["server"].(map[string]interface{}); ok {
+		projectConfig.Server = &ServerConfig{
+			Host:         getString(serverConfig, "host", "localhost"),
+			Port:         getInt(serverConfig, "port", 8080),
+			ReadTimeout:  getDuration(serverConfig, "read_timeout", "30s"),
+			WriteTimeout: getDuration(serverConfig, "write_timeout", "30s"),
+			IdleTimeout:  getDuration(serverConfig, "idle_timeout", "120s"),
+		}
+	}
+	
+	// 解析功能配置
+	if features, ok := config["features"].(map[string]interface{}); ok {
+		projectConfig.Features = &FeatureConfig{
+			Auth:       getBool(features, "auth", false),
+			Logging:    getBool(features, "logging", true),
+			Metrics:    getBool(features, "metrics", false),
+			Tracing:    getBool(features, "tracing", false),
+			Swagger:    getBool(features, "swagger", false),
+			Docker:     getBool(features, "docker", false),
+			Kubernetes: getBool(features, "kubernetes", false),
+		}
+	}
+	
+	return projectConfig, nil
 }
 
 // parseFields 解析字段定义
@@ -550,4 +611,41 @@ func toSnakeCase(s string) string {
 		result.WriteRune(r)
 	}
 	return strings.ToLower(result.String())
+}
+
+// 配置解析辅助函数
+func getString(config map[string]interface{}, key, defaultValue string) string {
+	if value, ok := config[key].(string); ok {
+		return value
+	}
+	return defaultValue
+}
+
+func getInt(config map[string]interface{}, key string, defaultValue int) int {
+	if value, ok := config[key].(float64); ok {
+		return int(value)
+	}
+	if value, ok := config[key].(int); ok {
+		return value
+	}
+	return defaultValue
+}
+
+func getBool(config map[string]interface{}, key string, defaultValue bool) bool {
+	if value, ok := config[key].(bool); ok {
+		return value
+	}
+	return defaultValue
+}
+
+func getDuration(config map[string]interface{}, key, defaultValue string) time.Duration {
+	if value, ok := config[key].(string); ok {
+		if duration, err := time.ParseDuration(value); err == nil {
+			return duration
+		}
+	}
+	if duration, err := time.ParseDuration(defaultValue); err == nil {
+		return duration
+	}
+	return 30 * time.Second
 }

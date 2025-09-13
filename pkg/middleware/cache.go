@@ -1,4 +1,4 @@
-﻿// Package middleware 缓存中间件实现
+// Package middleware 缓存中间件实现
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -7,7 +7,6 @@ package middleware
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -211,8 +210,8 @@ func DefaultCacheConfig() *CacheConfig {
 			// 默认使用连接ID和消息内容生成key
 			connID := ctx.Connection().ID()
 			msg := ctx.Message()
-			if msg != nil {
-				hash := md5.Sum(msg.GetData())
+			if len(msg.Data) > 0 {
+				hash := md5.Sum(msg.Data)
 				return fmt.Sprintf("%s:%s", connID, hex.EncodeToString(hash[:]))
 			}
 			return connID

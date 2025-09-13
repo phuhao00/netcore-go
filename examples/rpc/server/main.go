@@ -1,4 +1,4 @@
-﻿// Package main RPC服务器示例
+// Package main RPC服务器示例
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -13,7 +13,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/netcore-go"
 	"github.com/netcore-go/pkg/core"
 	"github.com/netcore-go/pkg/rpc"
 )
@@ -182,14 +181,11 @@ func main() {
 	log.Println("Starting RPC server example...")
 	
 	// 创建RPC服务器
-	server := netcore.NewRPCServer(
-		netcore.WithMaxConnections(1000),
-		netcore.WithReadBufferSize(4096),
-		netcore.WithWriteBufferSize(4096),
-		netcore.WithHeartbeat(true, 30*time.Second),
-		netcore.WithConnectionPool(true),
-		netcore.WithMemoryPool(true),
-		netcore.WithGoroutinePool(true),
+	server := rpc.NewRPCServer(
+		core.WithMaxConnections(1000),
+		core.WithReadBufferSize(4096),
+		core.WithWriteBufferSize(4096),
+		core.WithHeartbeat(true, 30*time.Second),
 	)
 	
 	// 设置消息处理器

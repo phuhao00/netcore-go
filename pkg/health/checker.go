@@ -12,19 +12,7 @@ import (
 	"time"
 )
 
-// HealthStatus 健康状态
-type HealthStatus string
-
-const (
-	// StatusHealthy 健康
-	StatusHealthy HealthStatus = "healthy"
-	// StatusUnhealthy 不健康
-	StatusUnhealthy HealthStatus = "unhealthy"
-	// StatusDegraded 降级
-	StatusDegraded HealthStatus = "degraded"
-	// StatusUnknown 未知
-	StatusUnknown HealthStatus = "unknown"
-)
+// 使用health.go中定义的HealthStatus类型
 
 // HealthCheckConfig 健康检查配置
 type HealthCheckConfig struct {
@@ -86,23 +74,7 @@ type HealthCheck interface {
 	Check(ctx context.Context) HealthCheckResult
 }
 
-// HealthCheckResult 健康检查结果
-type HealthCheckResult struct {
-	// 检查名称
-	Name string `json:"name"`
-	// 状态
-	Status HealthStatus `json:"status"`
-	// 消息
-	Message string `json:"message,omitempty"`
-	// 错误信息
-	Error string `json:"error,omitempty"`
-	// 检查时间
-	Timestamp time.Time `json:"timestamp"`
-	// 响应时间 (毫秒)
-	ResponseTime int64 `json:"response_time_ms"`
-	// 详细信息
-	Details map[string]interface{} `json:"details,omitempty"`
-}
+// 使用health.go中定义的HealthCheckResult类型
 
 // HealthReport 健康报告
 type HealthReport struct {
@@ -160,39 +132,31 @@ type GCInfo struct {
 	PauseNs uint64 `json:"pause_ns"`
 }
 
-// HealthChecker 健康检查器
-type HealthChecker struct {
-	config      *HealthCheckConfig
-	checks      map[string]HealthCheck
-	results     map[string]HealthCheckResult
+// 使用health.go中定义的HealthChecker接口和HealthStats类型
+
+// ConcreteHealthChecker 具体的健康检查器实现
+type ConcreteHealthChecker struct {
+	config        *HealthCheckConfig
+	checks        map[string]HealthCheck
+	results       map[string]HealthCheckResult
 	failureCounts map[string]int
 	successCounts map[string]int
-	mu          sync.RWMutex
-	running     bool
-	cancel      context.CancelFunc
-	startTime   time.Time
-	version     string
-	server      *http.Server
-	stats       *HealthStats
-}
-
-// HealthStats 健康检查统计
-type HealthStats struct {
-	TotalChecks    int64 `json:"total_checks"`
-	HealthyChecks  int64 `json:"healthy_checks"`
-	UnhealthyChecks int64 `json:"unhealthy_checks"`
-	DegradedChecks int64 `json:"degraded_checks"`
-	AverageResponseTime float64 `json:"average_response_time_ms"`
-	LastCheckTime time.Time `json:"last_check_time"`
+	mu            sync.RWMutex
+	running       bool
+	cancel        context.CancelFunc
+	startTime     time.Time
+	version       string
+	server        *http.Server
+	stats         *HealthStats
 }
 
 // NewHealthChecker 创建健康检查器
-func NewHealthChecker(config *HealthCheckConfig, version string) *HealthChecker {
+func NewHealthChecker(config *HealthCheckConfig, version string) *ConcreteHealthChecker {
 	if config == nil {
 		config = DefaultHealthCheckConfig()
 	}
 
-	return &HealthChecker{
+	return &ConcreteHealthChecker{
 		config:        config,
 		checks:        make(map[string]HealthCheck),
 		results:       make(map[string]HealthCheckResult),
@@ -204,8 +168,17 @@ func NewHealthChecker(config *HealthCheckConfig, version string) *HealthChecker 
 	}
 }
 
+// NewConcreteHealthChecker 创建具体健康检查器（兼容性函数）
+func NewConcreteHealthChecker(config *HealthCheckConfig, version string) *ConcreteHealthChecker {
+	if config == nil {
+		config = DefaultHealthCheckConfig()
+	}
+
+	return NewHealthChecker(config, version)
+}
+
 // RegisterCheck 注册健康检查
-func (hc *HealthChecker) RegisterCheck(check HealthCheck) {
+func (hc *ConcreteHealthChecker) RegisterCheck(check HealthCheck) {
 	hc.mu.Lock()
 	defer hc.mu.Unlock()
 
@@ -213,7 +186,7 @@ func (hc *HealthChecker) RegisterCheck(check HealthCheck) {
 }
 
 // UnregisterCheck 取消注册健康检查
-func (hc *HealthChecker) UnregisterCheck(name string) {
+func (hc *ConcreteHealthChecker) UnregisterCheck(name string) {
 	hc.mu.Lock()
 	defer hc.mu.Unlock()
 
@@ -224,7 +197,7 @@ func (hc *HealthChecker) UnregisterCheck(name string) {
 }
 
 // Start 启动健康检查器
-func (hc *HealthChecker) Start(ctx context.Context) error {
+func (hc *ConcreteHealthChecker) Start(ctx context.Context) error {
 	hc.mu.Lock()
 	defer hc.mu.Unlock()
 
@@ -252,7 +225,7 @@ func (hc *HealthChecker) Start(ctx context.Context) error {
 }
 
 // Stop 停止健康检查器
-func (hc *HealthChecker) Stop() error {
+func (hc *ConcreteHealthChecker) Stop() error {
 	hc.mu.Lock()
 	defer hc.mu.Unlock()
 
@@ -274,7 +247,7 @@ func (hc *HealthChecker) Stop() error {
 }
 
 // startHTTPServer 启动HTTP服务器
-func (hc *HealthChecker) startHTTPServer() error {
+func (hc *ConcreteHealthChecker) startHTTPServer() error {
 	mux := http.NewServeMux()
 
 	// 健康检查端点
@@ -310,7 +283,7 @@ func (hc *HealthChecker) startHTTPServer() error {
 }
 
 // periodicCheck 定期检查
-func (hc *HealthChecker) periodicCheck(ctx context.Context) {
+func (hc *ConcreteHealthChecker) periodicCheck(ctx context.Context) {
 	ticker := time.NewTicker(hc.config.CheckInterval)
 	defer ticker.Stop()
 
@@ -325,7 +298,7 @@ func (hc *HealthChecker) periodicCheck(ctx context.Context) {
 }
 
 // runAllChecks 运行所有检查
-func (hc *HealthChecker) runAllChecks(ctx context.Context) {
+func (hc *ConcreteHealthChecker) runAllChecks(ctx context.Context) {
 	hc.mu.RLock()
 	checks := make(map[string]HealthCheck)
 	for name, check := range hc.checks {
@@ -367,14 +340,14 @@ func (hc *HealthChecker) runAllChecks(ctx context.Context) {
 }
 
 // updateCheckCounts 更新检查计数
-func (hc *HealthChecker) updateCheckCounts(result HealthCheckResult) {
+func (hc *ConcreteHealthChecker) updateCheckCounts(result HealthCheckResult) {
 	switch result.Status {
-	case StatusHealthy:
+	case HealthStatusHealthy:
 		hc.successCounts[result.Name]++
 		if hc.successCounts[result.Name] >= hc.config.SuccessThreshold {
 			hc.failureCounts[result.Name] = 0
 		}
-	case StatusUnhealthy, StatusDegraded:
+	case HealthStatusUnhealthy, HealthStatusDegraded:
 		hc.failureCounts[result.Name]++
 		if hc.failureCounts[result.Name] >= hc.config.FailureThreshold {
 			hc.successCounts[result.Name] = 0
@@ -383,15 +356,15 @@ func (hc *HealthChecker) updateCheckCounts(result HealthCheckResult) {
 }
 
 // updateStats 更新统计信息
-func (hc *HealthChecker) updateStats(result HealthCheckResult) {
+func (hc *ConcreteHealthChecker) updateStats(result HealthCheckResult) {
 	atomic.AddInt64(&hc.stats.TotalChecks, 1)
 
 	switch result.Status {
-	case StatusHealthy:
+	case HealthStatusHealthy:
 		atomic.AddInt64(&hc.stats.HealthyChecks, 1)
-	case StatusUnhealthy:
+	case HealthStatusUnhealthy:
 		atomic.AddInt64(&hc.stats.UnhealthyChecks, 1)
-	case StatusDegraded:
+	case HealthStatusDegraded:
 		atomic.AddInt64(&hc.stats.DegradedChecks, 1)
 	}
 
@@ -403,12 +376,12 @@ func (hc *HealthChecker) updateStats(result HealthCheckResult) {
 }
 
 // GetOverallStatus 获取整体状态
-func (hc *HealthChecker) GetOverallStatus() HealthStatus {
+func (hc *ConcreteHealthChecker) GetOverallStatus() HealthStatus {
 	hc.mu.RLock()
 	defer hc.mu.RUnlock()
 
 	if len(hc.results) == 0 {
-		return StatusUnknown
+		return HealthStatusUnknown
 	}
 
 	healthyCount := 0
@@ -422,11 +395,11 @@ func (hc *HealthChecker) GetOverallStatus() HealthStatus {
 			unhealthyCount++
 		} else {
 			switch result.Status {
-			case StatusHealthy:
+			case HealthStatusHealthy:
 				healthyCount++
-			case StatusDegraded:
+			case HealthStatusDegraded:
 				degradedCount++
-			case StatusUnhealthy:
+			case HealthStatusUnhealthy:
 				unhealthyCount++
 			}
 		}
@@ -434,20 +407,20 @@ func (hc *HealthChecker) GetOverallStatus() HealthStatus {
 
 	// 如果有任何不健康的检查，整体状态为不健康
 	if unhealthyCount > 0 {
-		return StatusUnhealthy
+		return HealthStatusUnhealthy
 	}
 
 	// 如果有降级的检查，整体状态为降级
 	if degradedCount > 0 {
-		return StatusDegraded
+		return HealthStatusDegraded
 	}
 
 	// 所有检查都健康
-	return StatusHealthy
+	return HealthStatusHealthy
 }
 
 // GetHealthReport 获取健康报告
-func (hc *HealthChecker) GetHealthReport() HealthReport {
+func (hc *ConcreteHealthChecker) GetHealthReport() HealthReport {
 	hc.mu.RLock()
 	defer hc.mu.RUnlock()
 
@@ -467,7 +440,7 @@ func (hc *HealthChecker) GetHealthReport() HealthReport {
 }
 
 // getSystemInfo 获取系统信息
-func (hc *HealthChecker) getSystemInfo() SystemInfo {
+func (hc *ConcreteHealthChecker) getSystemInfo() SystemInfo {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
@@ -492,18 +465,18 @@ func (hc *HealthChecker) getSystemInfo() SystemInfo {
 }
 
 // healthHandler 健康检查处理器
-func (hc *HealthChecker) healthHandler(w http.ResponseWriter, r *http.Request) {
+func (hc *ConcreteHealthChecker) healthHandler(w http.ResponseWriter, r *http.Request) {
 	report := hc.GetHealthReport()
 
 	w.Header().Set("Content-Type", "application/json")
 
 	// 根据状态设置HTTP状态码
 	switch report.Status {
-	case StatusHealthy:
+	case HealthStatusHealthy:
 		w.WriteHeader(http.StatusOK)
-	case StatusDegraded:
+	case HealthStatusDegraded:
 		w.WriteHeader(http.StatusOK) // 降级状态仍返回200
-	case StatusUnhealthy:
+	case HealthStatusUnhealthy:
 		w.WriteHeader(http.StatusServiceUnavailable)
 	default:
 		w.WriteHeader(http.StatusServiceUnavailable)
@@ -523,20 +496,20 @@ func (hc *HealthChecker) healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // readinessHandler 就绪检查处理器
-func (hc *HealthChecker) readinessHandler(w http.ResponseWriter, r *http.Request) {
+func (hc *ConcreteHealthChecker) readinessHandler(w http.ResponseWriter, r *http.Request) {
 	status := hc.GetOverallStatus()
 
 	w.Header().Set("Content-Type", "application/json")
 
 	// 就绪检查：只有完全健康才算就绪
-	if status == StatusHealthy {
+	if status == HealthStatusHealthy {
 		w.WriteHeader(http.StatusOK)
 	} else {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}
 
 	response := map[string]interface{}{
-		"ready":     status == StatusHealthy,
+		"ready":     status == HealthStatusHealthy,
 		"status":    status,
 		"timestamp": time.Now(),
 	}
@@ -545,7 +518,7 @@ func (hc *HealthChecker) readinessHandler(w http.ResponseWriter, r *http.Request
 }
 
 // livenessHandler 存活检查处理器
-func (hc *HealthChecker) livenessHandler(w http.ResponseWriter, r *http.Request) {
+func (hc *ConcreteHealthChecker) livenessHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	// 存活检查：只要服务在运行就算存活
@@ -565,7 +538,7 @@ func (hc *HealthChecker) livenessHandler(w http.ResponseWriter, r *http.Request)
 }
 
 // metricsHandler 指标处理器
-func (hc *HealthChecker) metricsHandler(w http.ResponseWriter, r *http.Request) {
+func (hc *ConcreteHealthChecker) metricsHandler(w http.ResponseWriter, r *http.Request) {
 	hc.mu.RLock()
 	stats := *hc.stats
 	hc.mu.RUnlock()
@@ -584,7 +557,7 @@ func (hc *HealthChecker) metricsHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 // GetStats 获取统计信息
-func (hc *HealthChecker) GetStats() *HealthStats {
+func (hc *ConcreteHealthChecker) GetStats() *HealthStats {
 	hc.mu.RLock()
 	defer hc.mu.RUnlock()
 
@@ -632,7 +605,7 @@ func (d *DatabaseHealthCheck) Check(ctx context.Context) HealthCheckResult {
 	time.Sleep(10 * time.Millisecond)
 
 	result.ResponseTime = time.Since(start).Nanoseconds() / 1e6
-	result.Status = StatusHealthy
+	result.Status = HealthStatusHealthy
 	result.Message = "Database connection successful"
 	result.Details = map[string]interface{}{
 		"dsn": d.dsn,
@@ -674,7 +647,7 @@ func (h *HTTPHealthCheck) Check(ctx context.Context) HealthCheckResult {
 
 	req, err := http.NewRequestWithContext(ctx, "GET", h.url, nil)
 	if err != nil {
-		result.Status = StatusUnhealthy
+		result.Status = HealthStatusUnhealthy
 		result.Error = err.Error()
 		result.ResponseTime = time.Since(start).Nanoseconds() / 1e6
 		return result
@@ -682,7 +655,7 @@ func (h *HTTPHealthCheck) Check(ctx context.Context) HealthCheckResult {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		result.Status = StatusUnhealthy
+		result.Status = HealthStatusUnhealthy
 		result.Error = err.Error()
 		result.ResponseTime = time.Since(start).Nanoseconds() / 1e6
 		return result
@@ -692,13 +665,13 @@ func (h *HTTPHealthCheck) Check(ctx context.Context) HealthCheckResult {
 	result.ResponseTime = time.Since(start).Nanoseconds() / 1e6
 
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		result.Status = StatusHealthy
+		result.Status = HealthStatusHealthy
 		result.Message = fmt.Sprintf("HTTP %d", resp.StatusCode)
 	} else if resp.StatusCode >= 300 && resp.StatusCode < 500 {
-		result.Status = StatusDegraded
+		result.Status = HealthStatusDegraded
 		result.Message = fmt.Sprintf("HTTP %d", resp.StatusCode)
 	} else {
-		result.Status = StatusUnhealthy
+		result.Status = HealthStatusUnhealthy
 		result.Message = fmt.Sprintf("HTTP %d", resp.StatusCode)
 	}
 
@@ -743,7 +716,7 @@ func (t *TCPHealthCheck) Check(ctx context.Context) HealthCheckResult {
 
 	conn, err := dialer.DialContext(ctx, "tcp", t.address)
 	if err != nil {
-		result.Status = StatusUnhealthy
+		result.Status = HealthStatusUnhealthy
 		result.Error = err.Error()
 		result.ResponseTime = time.Since(start).Nanoseconds() / 1e6
 		return result
@@ -751,7 +724,7 @@ func (t *TCPHealthCheck) Check(ctx context.Context) HealthCheckResult {
 	defer conn.Close()
 
 	result.ResponseTime = time.Since(start).Nanoseconds() / 1e6
-	result.Status = StatusHealthy
+	result.Status = HealthStatusHealthy
 	result.Message = "TCP connection successful"
 	result.Details = map[string]interface{}{
 		"address": t.address,
@@ -795,13 +768,13 @@ func (m *MemoryHealthCheck) Check(ctx context.Context) HealthCheckResult {
 	usagePercent := float64(memStats.Alloc) / float64(m.maxMemoryBytes) * 100
 
 	if usagePercent < 80 {
-		result.Status = StatusHealthy
+		result.Status = HealthStatusHealthy
 		result.Message = fmt.Sprintf("Memory usage: %.2f%%", usagePercent)
 	} else if usagePercent < 95 {
-		result.Status = StatusDegraded
+		result.Status = HealthStatusDegraded
 		result.Message = fmt.Sprintf("High memory usage: %.2f%%", usagePercent)
 	} else {
-		result.Status = StatusUnhealthy
+		result.Status = HealthStatusUnhealthy
 		result.Message = fmt.Sprintf("Critical memory usage: %.2f%%", usagePercent)
 	}
 

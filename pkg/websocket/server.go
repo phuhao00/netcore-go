@@ -67,7 +67,8 @@ func NewServer(opts ...core.ServerOption) *Server {
 		},
 	}
 
-	// TODO: 初始化资源池（暂时简化实现）
+	// 初始化资源池
+	server.initResourcePools()
 
 	return server
 }
@@ -424,6 +425,87 @@ func (s *Server) Broadcast(msg core.Message) {
 		stats.MessagesSent += int64(len(connections))
 		stats.BytesSent += int64(len(msg.Data) * len(connections))
 	})
+}
+
+// initResourcePools 初始化资源池
+func (s *Server) initResourcePools() {
+	// 初始化连接池
+	s.connections = make(map[string]*Connection, s.config.MaxConnections)
+	
+	// 初始化消息缓冲池
+	// 这里可以使用sync.Pool来复用消息对象，减少GC压力
+	messagePool := &sync.Pool{
+		New: func() interface{} {
+			return &core.Message{}
+		},
+	}
+	
+	// 初始化字节缓冲池
+	bufferPool := &sync.Pool{
+		New: func() interface{} {
+			return make([]byte, 4096)
+		},
+	}
+	
+	// 将资源池存储到服务器配置中（如果需要的话）
+	// 这里只是示例，实际使用时可以根据需要调整
+	_ = messagePool
+	_ = bufferPool
+	
+	// 初始化工作协程池（用于处理消息）
+	workerPoolSize := s.config.MaxConnections / 10
+	if workerPoolSize < 10 {
+		workerPoolSize = 10
+	}
+	if workerPoolSize > 100 {
+		workerPoolSize = 100
+	}
+	
+	// 启动工作协程池
+	for i := 0; i < workerPoolSize; i++ {
+		go s.messageWorker(i)
+	}
+}
+
+// messageWorker 消息处理工作协程
+func (s *Server) messageWorker(workerID int) {
+	// 这是一个简化的工作协程实现
+	// 实际使用时可以通过channel来分发任务
+	for s.running {
+		// 模拟工作协程等待任务
+		time.Sleep(100 * time.Millisecond)
+		
+		// 这里可以处理来自消息队列的任务
+		// 例如：处理广播消息、批量发送等
+	}
+}
+
+// GetConnectionCount 获取当前连接数
+func (s *Server) GetConnectionCount() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return len(s.connections)
+}
+
+// GetConnection 根据ID获取连接
+func (s *Server) GetConnection(id string) *Connection {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.connections[id]
+}
+
+// CloseConnection 关闭指定连接
+func (s *Server) CloseConnection(id string) error {
+	s.mu.RLock()
+	conn, exists := s.connections[id]
+	s.mu.RUnlock()
+	
+	if !exists {
+		return fmt.Errorf("connection not found: %s", id)
+	}
+	
+	conn.Close()
+	return nil
 }
 
 

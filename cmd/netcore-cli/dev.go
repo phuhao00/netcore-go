@@ -6,15 +6,21 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"io"
+	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/spf13/cobra"
 )
 
@@ -469,9 +475,12 @@ func (fw *FileWatcher) shouldIgnore(path string) bool {
 
 // ProxyServer 代理服务器（用于热重载）
 type ProxyServer struct {
-	proxyPort  int
-	targetPort int
-	running    bool
+	proxyPort     int
+	targetPort    int
+	running       bool
+	server        *http.Server
+	wsConnections []*websocket.Conn
+	mu            sync.Mutex
 }
 
 // NewProxyServer 创建代理服务器
@@ -485,7 +494,124 @@ func NewProxyServer(proxyPort, targetPort int) *ProxyServer {
 // Start 启动代理服务器
 func (ps *ProxyServer) Start() error {
 	ps.running = true
-	// TODO: 实现HTTP代理和WebSocket热重载
+	
+	// 创建HTTP服务器
+	mux := http.NewServeMux()
+	
+	// WebSocket升级器
+	upgrader := websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			return true // 允许所有来源
+		},
+	}
+	
+	// WebSocket处理器
+	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			log.Printf("WebSocket upgrade failed: %v", err)
+			return
+		}
+		defer conn.Close()
+		
+		ps.mu.Lock()
+		ps.wsConnections = append(ps.wsConnections, conn)
+		ps.mu.Unlock()
+		
+		// 保持连接活跃
+		for {
+			if _, _, err := conn.ReadMessage(); err != nil {
+				break
+			}
+		}
+	})
+	
+	// 代理处理器
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// 创建到目标服务器的请求
+		targetURL := fmt.Sprintf("http://localhost:%d%s", ps.targetPort, r.URL.Path)
+		if r.URL.RawQuery != "" {
+			targetURL += "?" + r.URL.RawQuery
+		}
+		
+		req, err := http.NewRequest(r.Method, targetURL, r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		
+		// 复制请求头
+		for key, values := range r.Header {
+			for _, value := range values {
+				req.Header.Add(key, value)
+			}
+		}
+		
+		// 发送请求
+		client := &http.Client{Timeout: 30 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+		
+		// 复制响应头
+		for key, values := range resp.Header {
+			for _, value := range values {
+				w.Header().Add(key, value)
+			}
+		}
+		
+		// 注入热重载脚本到HTML响应
+		contentType := resp.Header.Get("Content-Type")
+		if strings.Contains(contentType, "text/html") {
+			body, err := io.ReadAll(resp.Body)
+			if err == nil {
+				htmlContent := string(body)
+				reloadScript := fmt.Sprintf(`
+<script>
+(function() {
+	var ws = new WebSocket('ws://localhost:%d/ws');
+	ws.onmessage = function(event) {
+		if (event.data === 'reload') {
+			location.reload();
+		}
+	};
+	ws.onclose = function() {
+		setTimeout(function() {
+			location.reload();
+		}, 1000);
+	};
+})();
+</script>
+</body>`, ps.proxyPort)
+				htmlContent = strings.Replace(htmlContent, "</body>", reloadScript, 1)
+				w.Header().Set("Content-Length", fmt.Sprintf("%d", len(htmlContent)))
+				w.WriteHeader(resp.StatusCode)
+				w.Write([]byte(htmlContent))
+				return
+			}
+		}
+		
+		// 复制响应体
+		w.WriteHeader(resp.StatusCode)
+		io.Copy(w, resp.Body)
+	})
+	
+	// 启动HTTP服务器
+	server := &http.Server{
+		Addr:    fmt.Sprintf(":%d", ps.proxyPort),
+		Handler: mux,
+	}
+	
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Printf("Proxy server error: %v", err)
+		}
+	}()
+	
+	ps.server = server
 	fmt.Printf("🔥 Hot reload proxy started on port %d\n", ps.proxyPort)
 	return nil
 }
@@ -493,12 +619,42 @@ func (ps *ProxyServer) Start() error {
 // Stop 停止代理服务器
 func (ps *ProxyServer) Stop() {
 	ps.running = false
+	
+	// 关闭所有WebSocket连接
+	ps.mu.Lock()
+	for _, conn := range ps.wsConnections {
+		conn.Close()
+	}
+	ps.wsConnections = nil
+	ps.mu.Unlock()
+	
+	// 关闭HTTP服务器
+	if ps.server != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		ps.server.Shutdown(ctx)
+	}
 }
 
 // NotifyReload 通知重新加载
 func (ps *ProxyServer) NotifyReload() {
-	// TODO: 通过WebSocket通知客户端重新加载
-	fmt.Println("🔄 Notifying clients to reload")
+	ps.mu.Lock()
+	defer ps.mu.Unlock()
+	
+	// 向所有WebSocket连接发送重载消息
+	var activeConnections []*websocket.Conn
+	for _, conn := range ps.wsConnections {
+		if err := conn.WriteMessage(websocket.TextMessage, []byte("reload")); err != nil {
+			conn.Close()
+		} else {
+			activeConnections = append(activeConnections, conn)
+		}
+	}
+	
+	// 更新活跃连接列表
+	ps.wsConnections = activeConnections
+	
+	fmt.Printf("🔄 Notified %d clients to reload\n", len(activeConnections))
 }
 
 // test 命令 - 运行测试
@@ -531,7 +687,7 @@ func runTest(cmd *cobra.Command, args []string) error {
 	benchmark, _ := cmd.Flags().GetBool("benchmark")
 	race, _ := cmd.Flags().GetBool("race")
 	verbose, _ := cmd.Flags().GetBool("verbose")
-	output, _ := cmd.Flags().GetString("output")
+	_, _ = cmd.Flags().GetString("output") // 暂未使用
 	timeout, _ := cmd.Flags().GetDuration("timeout")
 	parallel, _ := cmd.Flags().GetInt("parallel")
 	

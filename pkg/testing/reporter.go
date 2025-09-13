@@ -13,6 +13,54 @@ import (
 	"time"
 )
 
+// TestStats 测试统计信息
+type TestStats struct {
+	TotalTests    int64   `json:"total_tests"`
+	PassedTests   int64   `json:"passed_tests"`
+	FailedTests   int64   `json:"failed_tests"`
+	SkippedTests  int64   `json:"skipped_tests"`
+	TimeoutTests  int64   `json:"timeout_tests"`
+	SuccessRate   float64 `json:"success_rate"`
+	TotalDuration time.Duration `json:"total_duration"`
+}
+
+// TestType 测试类型
+type TestType string
+
+const (
+	TestTypeUnit        TestType = "unit"
+	TestTypeIntegration TestType = "integration"
+	TestTypeE2E         TestType = "e2e"
+	TestTypeBenchmark   TestType = "benchmark"
+	TestTypeLoad        TestType = "load"
+)
+
+// TestStatus 测试状态
+type TestStatus string
+
+const (
+	TestStatusPassed  TestStatus = "passed"
+	TestStatusFailed  TestStatus = "failed"
+	TestStatusSkipped TestStatus = "skipped"
+	TestStatusTimeout TestStatus = "timeout"
+)
+
+// TestCase 测试用例
+type TestCase struct {
+	Name        string        `json:"name"`
+	Description string        `json:"description"`
+	Type        TestType      `json:"type"`
+	Status      TestStatus    `json:"status"`
+	Duration    time.Duration `json:"duration"`
+	Error       string        `json:"error,omitempty"`
+	SkipReason  string        `json:"skip_reason,omitempty"`
+	StartTime   time.Time     `json:"start_time"`
+	EndTime     time.Time     `json:"end_time"`
+	Tags        []string      `json:"tags,omitempty"`
+	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	Retries     int           `json:"retries,omitempty"`
+}
+
 // JSONReporter JSON格式报告器
 type JSONReporter struct {
 	outputPath string
@@ -138,32 +186,20 @@ func (jr *JSONReporter) ReportStart(stats *TestStats) {
 }
 
 // ReportSuite 报告套件
-func (jr *JSONReporter) ReportSuite(suite *TestSuite, stats *TestStats) {
+func (jr *JSONReporter) ReportSuite(suite TestSuite, stats *TestStats) {
 	suiteReport := &SuiteReport{
-		Name:        suite.Name,
-		Description: suite.Description,
-		Type:        suite.Type,
-		Tags:        suite.Tags,
+		Name:        suite.Name(),
+		Description: "Test Suite",
+		Type:        TestTypeUnit,
+		Tags:        []string{},
 		StartTime:   time.Now(),
-		Tests:       suite.Tests,
-		Stats:       calculateSuiteStats(suite.Tests),
+		Tests:       []*TestCase{},
+		Stats:       &SuiteStats{},
 	}
 
-	// 计算套件持续时间
-	if len(suite.Tests) > 0 {
-		var minStart, maxEnd time.Time
-		for i, test := range suite.Tests {
-			if i == 0 || test.StartTime.Before(minStart) {
-				minStart = test.StartTime
-			}
-			if i == 0 || test.EndTime.After(maxEnd) {
-				maxEnd = test.EndTime
-			}
-		}
-		suiteReport.StartTime = minStart
-		suiteReport.EndTime = maxEnd
-		suiteReport.Duration = maxEnd.Sub(minStart)
-	}
+	// 设置套件结束时间
+	suiteReport.EndTime = time.Now()
+	suiteReport.Duration = suiteReport.EndTime.Sub(suiteReport.StartTime)
 
 	jr.report.Suites = append(jr.report.Suites, suiteReport)
 }
@@ -212,18 +248,12 @@ func (cr *ConsoleReporter) ReportStart(stats *TestStats) {
 }
 
 // ReportSuite 报告套件
-func (cr *ConsoleReporter) ReportSuite(suite *TestSuite, stats *TestStats) {
-	suiteStats := calculateSuiteStats(suite.Tests)
-	fmt.Printf("Suite: %s\n", cr.colorize(suite.Name, "blue"))
-	if suite.Description != "" {
-		fmt.Printf("  Description: %s\n", suite.Description)
-	}
-	fmt.Printf("  Type: %s\n", suite.Type)
-	if len(suite.Tags) > 0 {
-		fmt.Printf("  Tags: %s\n", strings.Join(suite.Tags, ", "))
-	}
+func (cr *ConsoleReporter) ReportSuite(suite TestSuite, stats *TestStats) {
+	fmt.Printf("Suite: %s\n", cr.colorize(suite.Name(), "blue"))
+	fmt.Printf("  Description: Test Suite\n")
+	fmt.Printf("  Type: unit\n")
 	fmt.Printf("  Tests: %d passed, %d failed, %d skipped\n",
-		suiteStats.PassedTests, suiteStats.FailedTests, suiteStats.SkippedTests)
+		stats.PassedTests, stats.FailedTests, stats.SkippedTests)
 	fmt.Println()
 }
 
@@ -304,15 +334,15 @@ func (xr *XMLReporter) ReportStart(stats *TestStats) {
 }
 
 // ReportSuite 报告套件
-func (xr *XMLReporter) ReportSuite(suite *TestSuite, stats *TestStats) {
+func (xr *XMLReporter) ReportSuite(suite TestSuite, stats *TestStats) {
 	suiteReport := &SuiteReport{
-		Name:        suite.Name,
-		Description: suite.Description,
-		Type:        suite.Type,
-		Tags:        suite.Tags,
+		Name:        suite.Name(),
+		Description: "Test Suite",
+		Type:        TestTypeUnit,
+		Tags:        []string{},
 		StartTime:   time.Now(),
-		Tests:       suite.Tests,
-		Stats:       calculateSuiteStats(suite.Tests),
+		Tests:       []*TestCase{},
+		Stats:       &SuiteStats{},
 	}
 	xr.report.Suites = append(xr.report.Suites, suiteReport)
 }
@@ -359,9 +389,8 @@ func (xr *XMLReporter) GenerateReport() ([]byte, error) {
 `,
 					test.SkipReason)
 			} else {
-				xml += "/>
-"
-			}
+				xml += "/>"
+		}
 		}
 
 		xml += "  </testsuite>\n"
@@ -394,15 +423,15 @@ func (hr *HTMLReporter) ReportStart(stats *TestStats) {
 }
 
 // ReportSuite 报告套件
-func (hr *HTMLReporter) ReportSuite(suite *TestSuite, stats *TestStats) {
+func (hr *HTMLReporter) ReportSuite(suite TestSuite, stats *TestStats) {
 	suiteReport := &SuiteReport{
-		Name:        suite.Name,
-		Description: suite.Description,
-		Type:        suite.Type,
-		Tags:        suite.Tags,
+		Name:        suite.Name(),
+		Description: "Test Suite",
+		Type:        TestTypeUnit,
+		Tags:        []string{},
 		StartTime:   time.Now(),
-		Tests:       suite.Tests,
-		Stats:       calculateSuiteStats(suite.Tests),
+		Tests:       []*TestCase{},
+		Stats:       &SuiteStats{},
 	}
 	hr.report.Suites = append(hr.report.Suites, suiteReport)
 }
@@ -490,9 +519,8 @@ func collectEnvironmentInfo() *Environment {
 		}
 	}
 
-	if tz, err := time.Now().Zone(); err == nil {
-		env.Timezone = tz
-	}
+	tz, _ := time.Now().Zone()
+	env.Timezone = tz
 
 	return env
 }
@@ -526,64 +554,7 @@ const defaultHTMLTemplate = `<!DOCTYPE html>
     </div>
     
     <div id="report-content">
-        <!-- Report content will be generated by JavaScript -->
+        <p>Test report data: {{REPORT_DATA}}</p>
     </div>
-    
-    <script>
-        const reportData = {{REPORT_DATA}};
-        
-        function renderReport(data) {
-            const content = document.getElementById('report-content');
-            
-            // Render stats
-            const statsHtml = \`
-                <div class="stats">
-                    <div class="stat">
-                        <h3>Total Tests</h3>
-                        <p>\${data.stats.total_tests}</p>
-                    </div>
-                    <div class="stat">
-                        <h3>Passed</h3>
-                        <p class="passed">\${data.stats.passed_tests}</p>
-                    </div>
-                    <div class="stat">
-                        <h3>Failed</h3>
-                        <p class="failed">\${data.stats.failed_tests}</p>
-                    </div>
-                    <div class="stat">
-                        <h3>Skipped</h3>
-                        <p class="skipped">\${data.stats.skipped_tests}</p>
-                    </div>
-                    <div class="stat">
-                        <h3>Success Rate</h3>
-                        <p>\${(data.stats.success_rate * 100).toFixed(2)}%</p>
-                    </div>
-                </div>
-            \`;
-            
-            // Render suites
-            const suitesHtml = data.suites.map(suite => \`
-                <div class="suite">
-                    <div class="suite-header">
-                        <h2>\${suite.name}</h2>
-                        <p>\${suite.description}</p>
-                        <p>Type: \${suite.type} | Tests: \${suite.stats.total_tests}</p>
-                    </div>
-                    \${suite.tests.map(test => \`
-                        <div class="test">
-                            <span class="\${test.status}">\${test.status.toUpperCase()}</span>
-                            <strong>\${test.name}</strong>
-                            <span>(\${test.duration})</span>
-                            \${test.error ? \`<br><small class="failed">\${test.error}</small>\` : ''}
-                        </div>
-                    \`).join('')}
-                </div>
-            \`).join('');
-            
-            content.innerHTML = statsHtml + suitesHtml;
-        }
-        
-        renderReport(reportData);
-    </script>
 </body>
 </html>`

@@ -12,17 +12,15 @@ import (
 	"sync"
 	"time"
 
-	// TODO: Uncomment when consul dependencies are available
-	// "github.com/hashicorp/consul/api"
+	"github.com/hashicorp/consul/api"
 
 	"github.com/netcore-go/pkg/discovery"
 )
 
 // ConsulDiscovery Consul服务发现
-// TODO: Uncomment when consul dependencies are available
 type ConsulDiscovery struct {
 	mu       sync.RWMutex
-	// client   *api.Client
+	client   *api.Client
 	config   *ConsulConfig
 	services map[string]*discovery.ServiceInfo
 	running  bool
@@ -41,8 +39,7 @@ type ConsulConfig struct {
 	TokenFile  string `json:"token_file"`
 
 	// TLS配置
-	// TODO: Uncomment when consul dependencies are available
-	// TLSConfig *api.TLSConfig `json:"tls_config"`
+	TLSConfig *api.TLSConfig `json:"tls_config"`
 
 	// 服务注册配置
 	ServiceName        string            `json:"service_name"`
@@ -62,11 +59,10 @@ type ConsulConfig struct {
 	HealthCheckTTL      time.Duration `json:"health_check_ttl"`
 
 	// 发现配置
-	WatchEnabled     bool          `json:"watch_enabled"`
-	WatchServices    []string      `json:"watch_services"`
-	// TODO: Uncomment when consul dependencies are available
-	// QueryOptions     *api.QueryOptions `json:"-"`
-	RefreshInterval  time.Duration `json:"refresh_interval"`
+	WatchEnabled     bool              `json:"watch_enabled"`
+	WatchServices    []string          `json:"watch_services"`
+	QueryOptions     *api.QueryOptions `json:"-"`
+	RefreshInterval  time.Duration     `json:"refresh_interval"`
 
 	// 重试配置
 	MaxRetries    int           `json:"max_retries"`
@@ -200,7 +196,7 @@ func (c *ConsulDiscovery) Register(service *discovery.ServiceInfo) error {
 		Tags:              append(c.config.ServiceTags, service.Tags...),
 		Address:           service.Address,
 		Port:              service.Port,
-		Meta:              service.Metadata,
+		Meta:              service.Meta,
 		EnableTagOverride: c.config.EnableTagOverride,
 	}
 
@@ -271,8 +267,8 @@ func (c *ConsulDiscovery) Discover(serviceName string) ([]*discovery.ServiceInfo
 			Address:  service.Service.Address,
 			Port:     service.Service.Port,
 			Tags:     service.Service.Tags,
-			Metadata: service.Service.Meta,
-			Healthy:  true, // 只返回健康的服务
+			Meta:   service.Service.Meta,
+			Health: discovery.Healthy, // 只返回健康的服务
 		}
 
 		// 设置节点信息
@@ -280,11 +276,11 @@ func (c *ConsulDiscovery) Discover(serviceName string) ([]*discovery.ServiceInfo
 			if serviceInfo.Address == "" {
 				serviceInfo.Address = service.Node.Address
 			}
-			if serviceInfo.Metadata == nil {
-				serviceInfo.Metadata = make(map[string]string)
+			if serviceInfo.Meta == nil {
+				serviceInfo.Meta = make(map[string]string)
 			}
-			serviceInfo.Metadata["node_id"] = service.Node.ID
-			serviceInfo.Metadata["node_name"] = service.Node.Node
+			serviceInfo.Meta["node_id"] = service.Node.ID
+			serviceInfo.Meta["node_name"] = service.Node.Node
 		}
 
 		result = append(result, serviceInfo)
@@ -336,8 +332,8 @@ func (c *ConsulDiscovery) Watch(serviceName string, callback func([]*discovery.S
 						Address:  service.Service.Address,
 						Port:     service.Service.Port,
 						Tags:     service.Service.Tags,
-						Metadata: service.Service.Meta,
-						Healthy:  true,
+						Meta:   service.Service.Meta,
+					Health: discovery.Healthy,
 					}
 
 					if service.Node != nil && serviceInfo.Address == "" {
@@ -372,12 +368,13 @@ func (c *ConsulDiscovery) createHealthCheck(service *discovery.ServiceInfo) *api
 	// HTTP健康检查
 	if c.config.HealthCheckHTTP != "" {
 		check.HTTP = c.config.HealthCheckHTTP
-	} else if service.HealthCheckPath != "" {
+	} else {
+		// 默认HTTP健康检查
 		scheme := "http"
-		if service.TLS {
+		if service.Protocol == "https" {
 			scheme = "https"
 		}
-		check.HTTP = fmt.Sprintf("%s://%s:%d%s", scheme, service.Address, service.Port, service.HealthCheckPath)
+		check.HTTP = fmt.Sprintf("%s://%s:%d/health", scheme, service.Address, service.Port)
 	}
 
 	// TCP健康检查
@@ -430,7 +427,7 @@ func (c *ConsulDiscovery) refreshStats() {
 	defer c.mu.Unlock()
 
 	// 获取所有服务
-	services, _, err := c.client.Agent().Services()
+	services, err := c.client.Agent().Services()
 	if err != nil {
 		c.stats.ErrorCount++
 		return

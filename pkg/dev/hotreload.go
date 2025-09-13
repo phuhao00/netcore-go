@@ -19,8 +19,7 @@ import (
 	"syscall"
 	"time"
 
-	// TODO: Uncomment when fsnotify dependency is available
-	// "github.com/fsnotify/fsnotify"
+	"github.com/fsnotify/fsnotify"
 )
 
 // HotReloadServer 热重载服务器

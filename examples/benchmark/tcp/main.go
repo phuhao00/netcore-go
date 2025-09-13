@@ -8,13 +8,9 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"runtime"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/netcore-go/pkg/tcp"
 )
 
 const (

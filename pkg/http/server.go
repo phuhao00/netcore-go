@@ -1,4 +1,4 @@
-﻿// Package http HTTP服务器实现
+// Package http HTTP服务器实现
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -40,7 +40,14 @@ type HTTPServer struct {
 }
 
 // NewHTTPServer 创建新的HTTP服务器
-func NewHTTPServer(config *core.ServerConfig) *HTTPServer {
+func NewHTTPServer(config *ServerConfig) *HTTPServer {
+	// 使用默认core配置
+	coreConfig := core.DefaultServerConfig()
+	return NewHTTPServerWithCoreConfig(coreConfig)
+}
+
+// NewHTTPServerWithCoreConfig 使用core配置创建HTTP服务器
+func NewHTTPServerWithCoreConfig(config *core.ServerConfig) *HTTPServer {
 	ctx, cancel := context.WithCancel(context.Background())
 	
 	server := &HTTPServer{
@@ -69,8 +76,8 @@ func NewHTTPServer(config *core.ServerConfig) *HTTPServer {
 	return server
 }
 
-// Start 启动HTTP服务器
-func (s *HTTPServer) Start(addr string) error {
+// StartServer 启动HTTP服务器（原方法重命名）
+func (s *HTTPServer) StartServer(addr string) error {
 	if !atomic.CompareAndSwapInt32(&s.running, 0, 1) {
 		return fmt.Errorf("server is already running")
 	}
@@ -153,6 +160,91 @@ func (s *HTTPServer) Handle(method, path string, handler HTTPHandler) {
 // ServeStatic 提供静态文件服务
 func (s *HTTPServer) ServeStatic(prefix, dir string) {
 	s.router.ServeStatic(prefix, dir)
+}
+
+// Use 添加中间件
+func (s *HTTPServer) Use(middleware HTTPMiddleware) {
+	// 将HTTPMiddleware包装为core.Middleware
+	wrapped := &HTTPMiddlewareWrapper{
+		middleware: middleware,
+		name:       "http_middleware",
+		priority:   50,
+	}
+	s.middlewares = append(s.middlewares, wrapped)
+}
+
+// GET 注册GET路由
+func (s *HTTPServer) GET(path string, handler HTTPHandlerFunc) {
+	s.router.HandleFunc("GET", path, handler)
+}
+
+// POST 注册POST路由
+func (s *HTTPServer) POST(path string, handler HTTPHandlerFunc) {
+	s.router.HandleFunc("POST", path, handler)
+}
+
+// PUT 注册PUT路由
+func (s *HTTPServer) PUT(path string, handler HTTPHandlerFunc) {
+	s.router.HandleFunc("PUT", path, handler)
+}
+
+// DELETE 注册DELETE路由
+func (s *HTTPServer) DELETE(path string, handler HTTPHandlerFunc) {
+	s.router.HandleFunc("DELETE", path, handler)
+}
+
+// PATCH 注册PATCH路由
+func (s *HTTPServer) PATCH(path string, handler HTTPHandlerFunc) {
+	s.router.HandleFunc("PATCH", path, handler)
+}
+
+// Group 创建路由组
+func (s *HTTPServer) Group(prefix string) *RouterGroup {
+	return &RouterGroup{
+		server: s,
+		prefix: prefix,
+	}
+}
+
+// Start 启动HTTP服务器
+func (s *HTTPServer) Start() error {
+	// 默认地址
+	addr := ":8080"
+	return s.StartServer(addr)
+}
+
+
+
+
+
+// StartWithAddr 使用指定地址启动HTTP服务器
+func (s *HTTPServer) StartWithAddr(addr string) error {
+	if !atomic.CompareAndSwapInt32(&s.running, 0, 1) {
+		return fmt.Errorf("server is already running")
+	}
+
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		atomic.StoreInt32(&s.running, 0)
+		return fmt.Errorf("failed to listen on %s: %w", addr, err)
+	}
+
+	s.listener = listener
+	fmt.Printf("HTTP Server listening on %s\n", addr)
+
+	// 启动连接接受循环
+	go s.acceptLoop()
+
+	// 启动心跳检测
+	if s.config.EnableHeartbeat {
+		go s.heartbeatLoop()
+	}
+
+	// 阻塞等待
+	select {
+	case <-s.ctx.Done():
+		return nil
+	}
 }
 
 // acceptLoop 连接接受循环

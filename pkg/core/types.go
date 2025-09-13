@@ -110,6 +110,28 @@ func NewMessage(msgType MessageType, data []byte) *Message {
 	}
 }
 
+// BaseMessage 基础消息结构体
+type BaseMessage struct {
+	// MsgType 消息类型
+	MsgType MessageType `json:"msg_type"`
+	// Data 消息数据
+	Data []byte `json:"data"`
+	// Timestamp 时间戳
+	Timestamp time.Time `json:"timestamp"`
+	// Headers 消息头
+	Headers map[string]string `json:"headers,omitempty"`
+}
+
+// NewBaseMessage 创建新的基础消息
+func NewBaseMessage(msgType MessageType, data []byte) *BaseMessage {
+	return &BaseMessage{
+		MsgType:   msgType,
+		Data:      data,
+		Timestamp: time.Now(),
+		Headers:   make(map[string]string),
+	}
+}
+
 // SetHeader 设置消息头
 func (m *Message) SetHeader(key, value string) {
 	if m.Headers == nil {

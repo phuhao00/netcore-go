@@ -5,10 +5,14 @@
 package testing
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -199,6 +203,49 @@ func NewE2ETestSuite(name, baseURL string) *E2ETestSuite {
 	}
 }
 
+// GetScenarios 获取所有测试场景
+func (e2e *E2ETestSuite) GetScenarios() []TestScenario {
+	return e2e.scenarios
+}
+
+// RunAllScenarios 运行所有测试场景
+func (e2e *E2ETestSuite) RunAllScenarios() error {
+	for _, scenario := range e2e.scenarios {
+		if err := e2e.RunScenario(scenario); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// RunScenario 运行指定的测试场景
+func (e2e *E2ETestSuite) RunScenario(scenario TestScenario) error {
+	e2e.logger.Info(fmt.Sprintf("Running scenario: %s", scenario.Name))
+	
+	for i, step := range scenario.Steps {
+		e2e.logger.Info(fmt.Sprintf("Executing step %d: %s", i+1, step.Name))
+		
+		result, err := e2e.executeStep(step)
+		if err != nil {
+			e2e.logger.ErrorWithErr(fmt.Sprintf("Step %d failed: %s", i+1, step.Name), err)
+			return fmt.Errorf("step %d (%s) failed: %w", i+1, step.Name, err)
+		}
+		
+		// 执行验证
+		if step.Validation != nil {
+			if err := step.Validation(result); err != nil {
+				e2e.logger.ErrorWithErr(fmt.Sprintf("Step %d validation failed: %s", i+1, step.Name), err)
+				return fmt.Errorf("step %d (%s) validation failed: %w", i+1, step.Name, err)
+			}
+		}
+		
+		e2e.logger.Info(fmt.Sprintf("Step %d completed: %s", i+1, step.Name))
+	}
+	
+	e2e.logger.Info(fmt.Sprintf("Scenario completed: %s", scenario.Name))
+	return nil
+}
+
 // Name 返回测试套件名称
 func (e2e *E2ETestSuite) Name() string {
 	return e2e.name
@@ -318,20 +365,166 @@ func (e2e *E2ETestSuite) executeHTTPGet(step TestStep) (interface{}, error) {
 
 // executeHTTPPost 执行HTTP POST请求
 func (e2e *E2ETestSuite) executeHTTPPost(step TestStep) (interface{}, error) {
-	// TODO: 实现POST请求逻辑
-	return nil, fmt.Errorf("POST not implemented")
+	url := e2e.baseURL + step.Parameters["path"].(string)
+	
+	// 获取请求体数据
+	var body io.Reader
+	if bodyData, exists := step.Parameters["body"]; exists {
+		if bodyStr, ok := bodyData.(string); ok {
+			body = strings.NewReader(bodyStr)
+		} else if bodyBytes, ok := bodyData.([]byte); ok {
+			body = bytes.NewReader(bodyBytes)
+		} else {
+			// 尝试JSON序列化
+			jsonData, err := json.Marshal(bodyData)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal request body: %w", err)
+			}
+			body = bytes.NewReader(jsonData)
+		}
+	}
+	
+	// 创建POST请求
+	req, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create POST request: %w", err)
+	}
+	
+	// 设置请求头
+	if headers, exists := step.Parameters["headers"]; exists {
+		if headerMap, ok := headers.(map[string]string); ok {
+			for key, value := range headerMap {
+				req.Header.Set(key, value)
+			}
+		}
+	}
+	
+	// 如果没有设置Content-Type且有body，默认设置为application/json
+	if body != nil && req.Header.Get("Content-Type") == "" {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	
+	// 执行请求
+	resp, err := e2e.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("POST request failed: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	// 读取响应体
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+	
+	return map[string]interface{}{
+		"status_code": resp.StatusCode,
+		"headers":     resp.Header,
+		"body":        string(respBody),
+		"response":    resp,
+	}, nil
 }
 
 // executeHTTPPut 执行HTTP PUT请求
 func (e2e *E2ETestSuite) executeHTTPPut(step TestStep) (interface{}, error) {
-	// TODO: 实现PUT请求逻辑
-	return nil, fmt.Errorf("PUT not implemented")
+	url := e2e.baseURL + step.Parameters["path"].(string)
+	
+	// 获取请求体数据
+	var body io.Reader
+	if bodyData, exists := step.Parameters["body"]; exists {
+		if bodyStr, ok := bodyData.(string); ok {
+			body = strings.NewReader(bodyStr)
+		} else if bodyBytes, ok := bodyData.([]byte); ok {
+			body = bytes.NewReader(bodyBytes)
+		} else {
+			// 尝试JSON序列化
+			jsonData, err := json.Marshal(bodyData)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal request body: %w", err)
+			}
+			body = bytes.NewReader(jsonData)
+		}
+	}
+	
+	// 创建PUT请求
+	req, err := http.NewRequest("PUT", url, body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create PUT request: %w", err)
+	}
+	
+	// 设置请求头
+	if headers, exists := step.Parameters["headers"]; exists {
+		if headerMap, ok := headers.(map[string]string); ok {
+			for key, value := range headerMap {
+				req.Header.Set(key, value)
+			}
+		}
+	}
+	
+	// 如果没有设置Content-Type且有body，默认设置为application/json
+	if body != nil && req.Header.Get("Content-Type") == "" {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	
+	// 执行请求
+	resp, err := e2e.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("PUT request failed: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	// 读取响应体
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+	
+	return map[string]interface{}{
+		"status_code": resp.StatusCode,
+		"headers":     resp.Header,
+		"body":        string(respBody),
+		"response":    resp,
+	}, nil
 }
 
 // executeHTTPDelete 执行HTTP DELETE请求
 func (e2e *E2ETestSuite) executeHTTPDelete(step TestStep) (interface{}, error) {
-	// TODO: 实现DELETE请求逻辑
-	return nil, fmt.Errorf("DELETE not implemented")
+	url := e2e.baseURL + step.Parameters["path"].(string)
+	
+	// 创建DELETE请求
+	req, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create DELETE request: %w", err)
+	}
+	
+	// 设置请求头
+	if headers, exists := step.Parameters["headers"]; exists {
+		if headerMap, ok := headers.(map[string]string); ok {
+			for key, value := range headerMap {
+				req.Header.Set(key, value)
+			}
+		}
+	}
+	
+	// 执行请求
+	resp, err := e2e.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("DELETE request failed: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	// 读取响应体
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+	
+	return map[string]interface{}{
+		"status_code": resp.StatusCode,
+		"headers":     resp.Header,
+		"body":        string(respBody),
+		"response":    resp,
+	}, nil
 }
 
 // executeWait 执行等待操作

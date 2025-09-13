@@ -11,8 +11,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/netcore-go/pkg/core"
 )
 
 // ConnectionPool 数据库连接池接口
@@ -476,7 +474,6 @@ func (p *Pool) cleanupLoop() {
 
 // cleanup 清理过期连接
 func (p *Pool) cleanup() {
-	now := time.Now()
 	var validConnections []*pooledConnection
 
 	// 收集所有连接

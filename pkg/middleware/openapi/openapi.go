@@ -8,13 +8,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"path"
 	"reflect"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/netcore-go/pkg/core"
 )
 
 // OpenAPIMiddleware OpenAPI文档中间件

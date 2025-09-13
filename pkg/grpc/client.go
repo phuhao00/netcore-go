@@ -10,8 +10,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -161,7 +164,7 @@ func (c *GRPCClient) IsConnected() bool {
 	}
 	
 	state := c.conn.GetState()
-	return state == grpc.Ready || state == grpc.Idle
+	return state == connectivity.Ready || state == connectivity.Idle
 }
 
 // SetMetadata 设置请求元数据
@@ -276,10 +279,42 @@ func AuthClientInterceptor(token string) grpc.UnaryClientInterceptor {
 	}
 }
 
+var (
+	// gRPC客户端指标
+	grpcClientRequestsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "grpc_client_requests_total",
+			Help: "Total number of gRPC client requests",
+		},
+		[]string{"method", "status"},
+	)
+	
+	grpcClientRequestDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name: "grpc_client_request_duration_seconds",
+			Help: "Duration of gRPC client requests in seconds",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"method", "status"},
+	)
+	
+	grpcClientActiveRequests = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "grpc_client_active_requests",
+			Help: "Number of active gRPC client requests",
+		},
+		[]string{"method"},
+	)
+)
+
 // MetricsClientInterceptor 指标客户端拦截器
 func MetricsClientInterceptor() grpc.UnaryClientInterceptor {
 	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 		start := time.Now()
+		
+		// 增加活跃请求计数
+		grpcClientActiveRequests.WithLabelValues(method).Inc()
+		defer grpcClientActiveRequests.WithLabelValues(method).Dec()
 		
 		err := invoker(ctx, method, req, reply, cc, opts...)
 		
@@ -289,7 +324,10 @@ func MetricsClientInterceptor() grpc.UnaryClientInterceptor {
 			status = "error"
 		}
 		
-		// TODO: 集成实际的指标收集系统
+		// 记录指标
+		grpcClientRequestsTotal.WithLabelValues(method, status).Inc()
+		grpcClientRequestDuration.WithLabelValues(method, status).Observe(duration.Seconds())
+		
 		fmt.Printf("[gRPC Client Metrics] method=%s, status=%s, duration=%v\n", method, status, duration)
 		
 		return err

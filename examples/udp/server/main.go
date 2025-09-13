@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/netcore-go/pkg/udp"
+	"github.com/netcore-go"
 )
 
 // EchoHandler UDP回声处理器

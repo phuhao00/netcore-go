@@ -1,4 +1,4 @@
-﻿// Package logger provides high-performance logging functionality for NetCore-Go
+// Package logger provides high-performance logging functionality for NetCore-Go
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -14,14 +14,16 @@ import (
 	"sync/atomic"
 )
 
-// Validator `n�?type Validator interface {
+// Validator 验证器接口
+type Validator interface {
 	Validate(entry *Entry) error
 	GetName() string
 	IsEnabled() bool
 	SetEnabled(bool)
 }
 
-// FieldValidator `n�?type FieldValidator struct {
+// FieldValidator 字段验证器
+type FieldValidator struct {
 	mu      sync.RWMutex
 	name    string
 	enabled bool
@@ -29,18 +31,22 @@ import (
 	stats   ValidationStats
 }
 
-// ValidationRule `n`ntype ValidationRule interface {
+// ValidationRule 验证规则接口
+type ValidationRule interface {
 	Validate(key string, value interface{}) error
 	GetName() string
 }
 
-// ValidationStats `n`ntype ValidationStats struct {
-	TotalValidations   int64 `json:"total_validations"`   // `n�?	SuccessValidations int64 `json:"success_validations"` // `n
-	FailedValidations  int64 `json:"failed_validations"`  // `n
-	RuleViolations     map[string]int64 `json:"rule_violations"` // `n
+// ValidationStats 验证统计信息
+type ValidationStats struct {
+	TotalValidations   int64            `json:"total_validations"`   // 总验证次数
+	SuccessValidations int64            `json:"success_validations"` // 成功验证次数
+	FailedValidations  int64            `json:"failed_validations"`  // 失败验证次数
+	RuleViolations     map[string]int64 `json:"rule_violations"`     // 规则违反次数
 }
 
-// NewFieldValidator `n�?func NewFieldValidator(name string) *FieldValidator {
+// NewFieldValidator 创建字段验证器
+func NewFieldValidator(name string) *FieldValidator {
 	return &FieldValidator{
 		name:    name,
 		enabled: true,
@@ -51,13 +57,15 @@ import (
 	}
 }
 
-// AddRule `n`nfunc (v *FieldValidator) AddRule(rule ValidationRule) {
+// AddRule 添加验证规则
+func (v *FieldValidator) AddRule(rule ValidationRule) {
 	v.mu.Lock()
 	v.rules = append(v.rules, rule)
 	v.mu.Unlock()
 }
 
-// Validate `n`nfunc (v *FieldValidator) Validate(entry *Entry) error {
+// Validate 验证日志条目
+func (v *FieldValidator) Validate(entry *Entry) error {
 	if !v.IsEnabled() {
 		return nil
 	}
@@ -68,12 +76,13 @@ import (
 	rules := v.rules
 	v.mu.RUnlock()
 	
-	// `n`nfor key, value := range entry.Fields {
+	// 验证所有字段
+	for key, value := range entry.Fields {
 		for _, rule := range rules {
 			if err := rule.Validate(key, value); err != nil {
 				atomic.AddInt64(&v.stats.FailedValidations, 1)
 				
-				// `n
+				// 记录规则违反
 				v.mu.Lock()
 				v.stats.RuleViolations[rule.GetName()]++
 				v.mu.Unlock()
@@ -87,24 +96,28 @@ import (
 	return nil
 }
 
-// GetName `n�?func (v *FieldValidator) GetName() string {
+// GetName 获取验证器名称
+func (v *FieldValidator) GetName() string {
 	return v.name
 }
 
-// IsEnabled `n�?func (v *FieldValidator) IsEnabled() bool {
+// IsEnabled 检查是否启用
+func (v *FieldValidator) IsEnabled() bool {
 	v.mu.RLock()
 	enabled := v.enabled
 	v.mu.RUnlock()
 	return enabled
 }
 
-// SetEnabled `n`nfunc (v *FieldValidator) SetEnabled(enabled bool) {
+// SetEnabled 设置启用状态
+func (v *FieldValidator) SetEnabled(enabled bool) {
 	v.mu.Lock()
 	v.enabled = enabled
 	v.mu.Unlock()
 }
 
-// GetStats `n`nfunc (v *FieldValidator) GetStats() ValidationStats {
+// GetStats 获取统计信息
+func (v *FieldValidator) GetStats() ValidationStats {
 	v.mu.RLock()
 	ruleViolations := make(map[string]int64)
 	for k, v := range v.stats.RuleViolations {
@@ -120,7 +133,8 @@ import (
 	}
 }
 
-// ResetStats `n`nfunc (v *FieldValidator) ResetStats() {
+// ResetStats 重置统计信息
+func (v *FieldValidator) ResetStats() {
 	atomic.StoreInt64(&v.stats.TotalValidations, 0)
 	atomic.StoreInt64(&v.stats.SuccessValidations, 0)
 	atomic.StoreInt64(&v.stats.FailedValidations, 0)
@@ -130,23 +144,27 @@ import (
 	v.mu.Unlock()
 }
 
-// RequiredFieldRule `n`ntype RequiredFieldRule struct {
+// RequiredFieldRule 必需字段规则
+type RequiredFieldRule struct {
 	name           string
 	requiredFields []string
 }
 
-// NewRequiredFieldRule `n`nfunc NewRequiredFieldRule(requiredFields []string) *RequiredFieldRule {
+// NewRequiredFieldRule 创建必需字段规则
+func NewRequiredFieldRule(requiredFields []string) *RequiredFieldRule {
 	return &RequiredFieldRule{
 		name:           "required_field",
 		requiredFields: requiredFields,
 	}
 }
 
-// Validate `n`nfunc (r *RequiredFieldRule) Validate(key string, value interface{}) error {
-	// `nEntry`n，`n�?	return nil
+// Validate 验证字段
+func (r *RequiredFieldRule) Validate(key string, value interface{}) error {
+	// 这个规则需要在Entry级别验证，这里返回nil
+	return nil
 }
 
-// ValidateEntry `nEntry
+// ValidateEntry 验证Entry
 func (r *RequiredFieldRule) ValidateEntry(entry *Entry) error {
 	for _, field := range r.requiredFields {
 		if _, exists := entry.Fields[field]; !exists {
@@ -156,26 +174,30 @@ func (r *RequiredFieldRule) ValidateEntry(entry *Entry) error {
 	return nil
 }
 
-// GetName `n`nfunc (r *RequiredFieldRule) GetName() string {
+// GetName 获取规则名称
+func (r *RequiredFieldRule) GetName() string {
 	return r.name
 }
 
-// TypeValidationRule `n`ntype TypeValidationRule struct {
+// TypeValidationRule 类型验证规则
+type TypeValidationRule struct {
 	name       string
 	fieldTypes map[string]reflect.Type
 }
 
-// NewTypeValidationRule `n`nfunc NewTypeValidationRule(fieldTypes map[string]reflect.Type) *TypeValidationRule {
+// NewTypeValidationRule 创建类型验证规则
+func NewTypeValidationRule(fieldTypes map[string]reflect.Type) *TypeValidationRule {
 	return &TypeValidationRule{
 		name:       "type_validation",
 		fieldTypes: fieldTypes,
 	}
 }
 
-// Validate `n`nfunc (r *TypeValidationRule) Validate(key string, value interface{}) error {
+// Validate 验证字段类型
+func (r *TypeValidationRule) Validate(key string, value interface{}) error {
 	expectedType, exists := r.fieldTypes[key]
 	if !exists {
-		return nil // `n
+		return nil // 不在验证范围内
 	}
 	
 	actualType := reflect.TypeOf(value)
@@ -186,17 +208,21 @@ func (r *RequiredFieldRule) ValidateEntry(entry *Entry) error {
 	return nil
 }
 
-// GetName `n`nfunc (r *TypeValidationRule) GetName() string {
+// GetName 获取规则名称
+func (r *TypeValidationRule) GetName() string {
 	return r.name
 }
 
-// LengthValidationRule `n`ntype LengthValidationRule struct {
+// LengthValidationRule 长度验证规则
+type LengthValidationRule struct {
 	name      string
 	minLength int
 	maxLength int
-	fields    []string // `n，`n�?}
+	fields    []string // 需要验证的字段，为空则验证所有字符串字段
+}
 
-// NewLengthValidationRule `n`nfunc NewLengthValidationRule(minLength, maxLength int, fields []string) *LengthValidationRule {
+// NewLengthValidationRule 创建长度验证规则
+func NewLengthValidationRule(minLength, maxLength int, fields []string) *LengthValidationRule {
 	return &LengthValidationRule{
 		name:      "length_validation",
 		minLength: minLength,
@@ -205,8 +231,10 @@ func (r *RequiredFieldRule) ValidateEntry(entry *Entry) error {
 	}
 }
 
-// Validate `n`nfunc (r *LengthValidationRule) Validate(key string, value interface{}) error {
-	// `n`nif len(r.fields) > 0 {
+// Validate 验证字段长度
+func (r *LengthValidationRule) Validate(key string, value interface{}) error {
+	// 检查是否需要验证此字段
+	if len(r.fields) > 0 {
 		found := false
 		for _, field := range r.fields {
 			if field == key {
@@ -219,17 +247,14 @@ func (r *RequiredFieldRule) ValidateEntry(entry *Entry) error {
 		}
 	}
 	
-	// `n�?	var length int
-	switch v := value.(type) {
-	case string:
-		length = len(v)
-	case []byte:
-		length = len(v)
-	default:
-		length = len(fmt.Sprintf("%v", v))
+	// 只验证字符串类型
+	str, ok := value.(string)
+	if !ok {
+		return nil
 	}
 	
-	// `n`nif r.minLength > 0 && length < r.minLength {
+	length := len(str)
+	if r.minLength > 0 && length < r.minLength {
 		return fmt.Errorf("field '%s' length %d is less than minimum %d", key, length, r.minLength)
 	}
 	
@@ -240,16 +265,20 @@ func (r *RequiredFieldRule) ValidateEntry(entry *Entry) error {
 	return nil
 }
 
-// GetName `n`nfunc (r *LengthValidationRule) GetName() string {
+// GetName 获取规则名称
+func (r *LengthValidationRule) GetName() string {
 	return r.name
 }
 
-// RegexValidationRule `n�?type RegexValidationRule struct {
+// RegexValidationRule 正则表达式验证规则
+type RegexValidationRule struct {
 	name    string
 	pattern *regexp.Regexp
-	fields  []string // `n�?}
+	fields  []string
+}
 
-// NewRegexValidationRule `n�?func NewRegexValidationRule(pattern string, fields []string) (*RegexValidationRule, error) {
+// NewRegexValidationRule 创建正则表达式验证规则
+func NewRegexValidationRule(pattern string, fields []string) (*RegexValidationRule, error) {
 	regex, err := regexp.Compile(pattern)
 	if err != nil {
 		return nil, fmt.Errorf("invalid regex pattern: %w", err)
@@ -262,40 +291,50 @@ func (r *RequiredFieldRule) ValidateEntry(entry *Entry) error {
 	}, nil
 }
 
-// Validate `n`nfunc (r *RegexValidationRule) Validate(key string, value interface{}) error {
-	// `n
-	found := false
-	for _, field := range r.fields {
-		if field == key {
-			found = true
-			break
+// Validate 验证字段格式
+func (r *RegexValidationRule) Validate(key string, value interface{}) error {
+	// 检查是否需要验证此字段
+	if len(r.fields) > 0 {
+		found := false
+		for _, field := range r.fields {
+			if field == key {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil
 		}
 	}
-	if !found {
+	
+	// 只验证字符串类型
+	str, ok := value.(string)
+	if !ok {
 		return nil
 	}
 	
-	// `n
-	str := fmt.Sprintf("%v", value)
-	
-	// `n�?	if !r.pattern.MatchString(str) {
+	if !r.pattern.MatchString(str) {
 		return fmt.Errorf("field '%s' value '%s' does not match pattern", key, str)
 	}
 	
 	return nil
 }
 
-// GetName `n`nfunc (r *RegexValidationRule) GetName() string {
+// GetName 获取规则名称
+func (r *RegexValidationRule) GetName() string {
 	return r.name
 }
 
-// RangeValidationRule `n`ntype RangeValidationRule struct {
+// RangeValidationRule 范围验证规则
+type RangeValidationRule struct {
 	name   string
 	min    float64
 	max    float64
-	fields []string // `n�?}
+	fields []string
+}
 
-// NewRangeValidationRule `n`nfunc NewRangeValidationRule(min, max float64, fields []string) *RangeValidationRule {
+// NewRangeValidationRule 创建范围验证规则
+func NewRangeValidationRule(min, max float64, fields []string) *RangeValidationRule {
 	return &RangeValidationRule{
 		name:   "range_validation",
 		min:    min,
@@ -304,20 +343,24 @@ func (r *RequiredFieldRule) ValidateEntry(entry *Entry) error {
 	}
 }
 
-// Validate `n`nfunc (r *RangeValidationRule) Validate(key string, value interface{}) error {
-	// `n
-	found := false
-	for _, field := range r.fields {
-		if field == key {
-			found = true
-			break
+// Validate 验证数值范围
+func (r *RangeValidationRule) Validate(key string, value interface{}) error {
+	// 检查是否需要验证此字段
+	if len(r.fields) > 0 {
+		found := false
+		for _, field := range r.fields {
+			if field == key {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil
 		}
 	}
-	if !found {
-		return nil
-	}
 	
-	// `n�?	var num float64
+	// 转换为数值
+	var num float64
 	var err error
 	
 	switch v := value.(type) {
@@ -334,13 +377,13 @@ func (r *RequiredFieldRule) ValidateEntry(entry *Entry) error {
 	case string:
 		num, err = strconv.ParseFloat(v, 64)
 		if err != nil {
-			return fmt.Errorf("field '%s' value '%s' is not a valid number", key, v)
+			return nil // 不是数值，跳过验证
 		}
 	default:
-		return fmt.Errorf("field '%s' value type %T is not numeric", key, value)
+		return nil // 不支持的类型，跳过验证
 	}
 	
-	// `n`nif num < r.min {
+	if num < r.min {
 		return fmt.Errorf("field '%s' value %f is less than minimum %f", key, num, r.min)
 	}
 	
@@ -351,253 +394,168 @@ func (r *RequiredFieldRule) ValidateEntry(entry *Entry) error {
 	return nil
 }
 
-// GetName `n`nfunc (r *RangeValidationRule) GetName() string {
+// GetName 获取规则名称
+func (r *RangeValidationRule) GetName() string {
 	return r.name
 }
 
-// EnumValidationRule `n`ntype EnumValidationRule struct {
-	name         string
-	allowedValues map[string]bool
-	fields       []string // `n�?}
-
-// NewEnumValidationRule `n`nfunc NewEnumValidationRule(allowedValues []string, fields []string) *EnumValidationRule {
-	valueMap := make(map[string]bool)
-	for _, value := range allowedValues {
-		valueMap[value] = true
-	}
-	
-	return &EnumValidationRule{
-		name:          "enum_validation",
-		allowedValues: valueMap,
-		fields:        fields,
-	}
-}
-
-// Validate `n`nfunc (r *EnumValidationRule) Validate(key string, value interface{}) error {
-	// `n
-	found := false
-	for _, field := range r.fields {
-		if field == key {
-			found = true
-			break
-		}
-	}
-	if !found {
-		return nil
-	}
-	
-	// `n
-	str := fmt.Sprintf("%v", value)
-	
-	// `n�?	if !r.allowedValues[str] {
-		return fmt.Errorf("field '%s' value '%s' is not in allowed values", key, str)
-	}
-	
-	return nil
-}
-
-// GetName `n`nfunc (r *EnumValidationRule) GetName() string {
-	return r.name
-}
-
-// CustomValidationRule `n�?type CustomValidationRule struct {
+// BlacklistValidationRule 黑名单验证规则
+type BlacklistValidationRule struct {
 	name      string
-	validator func(key string, value interface{}) error
+	blacklist map[string]bool
+	fields    []string
 }
 
-// NewCustomValidationRule `n�?func NewCustomValidationRule(name string, validator func(string, interface{}) error) *CustomValidationRule {
-	return &CustomValidationRule{
-		name:      name,
-		validator: validator,
+// NewBlacklistValidationRule 创建黑名单验证规则
+func NewBlacklistValidationRule(blacklist []string, fields []string) *BlacklistValidationRule {
+	blacklistMap := make(map[string]bool)
+	for _, item := range blacklist {
+		blacklistMap[strings.ToLower(item)] = true
+	}
+	
+	return &BlacklistValidationRule{
+		name:      "blacklist_validation",
+		blacklist: blacklistMap,
+		fields:    fields,
 	}
 }
 
-// Validate `n`nfunc (r *CustomValidationRule) Validate(key string, value interface{}) error {
-	if r.validator == nil {
+// Validate 验证黑名单
+func (r *BlacklistValidationRule) Validate(key string, value interface{}) error {
+	// 检查是否需要验证此字段
+	if len(r.fields) > 0 {
+		found := false
+		for _, field := range r.fields {
+			if field == key {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil
+		}
+	}
+	
+	// 只验证字符串类型
+	str, ok := value.(string)
+	if !ok {
 		return nil
 	}
-	return r.validator(key, value)
+	
+	if r.blacklist[strings.ToLower(str)] {
+		return fmt.Errorf("field '%s' contains blacklisted value '%s'", key, str)
+	}
+	
+	return nil
 }
 
-// GetName `n`nfunc (r *CustomValidationRule) GetName() string {
+// GetName 获取规则名称
+func (r *BlacklistValidationRule) GetName() string {
 	return r.name
 }
 
-// ValidationManager `n�?type ValidationManager struct {
+// CompositeValidator 复合验证器
+type CompositeValidator struct {
 	mu         sync.RWMutex
-	validators []Validator
+	name       string
 	enabled    bool
-	stats      ValidationManagerStats
-	
-	// `n
-	config ValidationManagerConfig
-	
-	// `n
-	onValidationError func(error, *Entry)
+	validators []Validator
+	stats      ValidationStats
 }
 
-// ValidationManagerConfig `n�?type ValidationManagerConfig struct {
-	Enabled           bool `json:"enabled"`             // `n
-	StopOnFirstError  bool `json:"stop_on_first_error"` // `n
-	MaxFieldCount     int  `json:"max_field_count"`     // `n�?	MaxValueSize      int  `json:"max_value_size"`      // `n�?	EnableMetrics     bool `json:"enable_metrics"`      // `n
-}
-
-// ValidationManagerStats `n�?type ValidationManagerStats struct {
-	TotalEntries      int64 `json:"total_entries"`      // `n
-	ValidEntries      int64 `json:"valid_entries"`      // `n�?	InvalidEntries    int64 `json:"invalid_entries"`    // `n�?	ValidationErrors  int64 `json:"validation_errors"`  // `n�?}
-
-// NewValidationManager `n�?func NewValidationManager(config ValidationManagerConfig) *ValidationManager {
-	// `n�?	if config.MaxFieldCount <= 0 {
-		config.MaxFieldCount = 50
-	}
-	if config.MaxValueSize <= 0 {
-		config.MaxValueSize = 1024
-	}
-	
-	return &ValidationManager{
+// NewCompositeValidator 创建复合验证器
+func NewCompositeValidator(name string) *CompositeValidator {
+	return &CompositeValidator{
+		name:       name,
+		enabled:    true,
 		validators: make([]Validator, 0),
-		enabled:    config.Enabled,
-		config:     config,
+		stats: ValidationStats{
+			RuleViolations: make(map[string]int64),
+		},
 	}
 }
 
-// AddValidator `n�?func (vm *ValidationManager) AddValidator(validator Validator) {
-	vm.mu.Lock()
-	vm.validators = append(vm.validators, validator)
-	vm.mu.Unlock()
+// AddValidator 添加验证器
+func (v *CompositeValidator) AddValidator(validator Validator) {
+	v.mu.Lock()
+	v.validators = append(v.validators, validator)
+	v.mu.Unlock()
 }
 
-// ValidateEntry `n`nfunc (vm *ValidationManager) ValidateEntry(entry *Entry) error {
-	if !vm.enabled {
+// Validate 验证日志条目
+func (v *CompositeValidator) Validate(entry *Entry) error {
+	if !v.IsEnabled() {
 		return nil
 	}
 	
-	if vm.config.EnableMetrics {
-		atomic.AddInt64(&vm.stats.TotalEntries, 1)
-	}
+	atomic.AddInt64(&v.stats.TotalValidations, 1)
 	
-	// `n`nif err := vm.basicValidation(entry); err != nil {
-		if vm.config.EnableMetrics {
-			atomic.AddInt64(&vm.stats.InvalidEntries, 1)
-			atomic.AddInt64(&vm.stats.ValidationErrors, 1)
-		}
-		
-		if vm.onValidationError != nil {
-			vm.onValidationError(err, entry)
-		}
-		
-		return err
-	}
+	v.mu.RLock()
+	validators := v.validators
+	v.mu.RUnlock()
 	
-	// `n
-	vm.mu.RLock()
-	validators := vm.validators
-	stopOnFirstError := vm.config.StopOnFirstError
-	vm.mu.RUnlock()
-	
-	var errors []error
+	// 执行所有验证器
 	for _, validator := range validators {
-		if !validator.IsEnabled() {
-			continue
-		}
-		
 		if err := validator.Validate(entry); err != nil {
-			if vm.config.EnableMetrics {
-				atomic.AddInt64(&vm.stats.ValidationErrors, 1)
-			}
+			atomic.AddInt64(&v.stats.FailedValidations, 1)
 			
-			if vm.onValidationError != nil {
-				vm.onValidationError(err, entry)
-			}
+			// 记录验证器违反
+			v.mu.Lock()
+			v.stats.RuleViolations[validator.GetName()]++
+			v.mu.Unlock()
 			
-			if stopOnFirstError {
-				if vm.config.EnableMetrics {
-					atomic.AddInt64(&vm.stats.InvalidEntries, 1)
-				}
-				return err
-			}
-			
-			errors = append(errors, err)
+			return fmt.Errorf("validator '%s' failed: %w", validator.GetName(), err)
 		}
 	}
 	
-	if len(errors) > 0 {
-		if vm.config.EnableMetrics {
-			atomic.AddInt64(&vm.stats.InvalidEntries, 1)
-		}
-		return fmt.Errorf("validation failed with %d errors: %v", len(errors), errors)
-	}
-	
-	if vm.config.EnableMetrics {
-		atomic.AddInt64(&vm.stats.ValidEntries, 1)
-	}
-	
+	atomic.AddInt64(&v.stats.SuccessValidations, 1)
 	return nil
 }
 
-// basicValidation `n`nfunc (vm *ValidationManager) basicValidation(entry *Entry) error {
-	// `n`nif vm.config.MaxFieldCount > 0 && len(entry.Fields) > vm.config.MaxFieldCount {
-		return fmt.Errorf("field count %d exceeds maximum %d", len(entry.Fields), vm.config.MaxFieldCount)
-	}
-	
-	// `n�?	if vm.config.MaxValueSize > 0 {
-		for key, value := range entry.Fields {
-			valueStr := fmt.Sprintf("%v", value)
-			if len(valueStr) > vm.config.MaxValueSize {
-				return fmt.Errorf("field '%s' value size %d exceeds maximum %d", key, len(valueStr), vm.config.MaxValueSize)
-			}
-		}
-	}
-	
-	// `n�?	if strings.TrimSpace(entry.Message) == "" {
-		return fmt.Errorf("log message cannot be empty")
-	}
-	
-	return nil
+// GetName 获取验证器名称
+func (v *CompositeValidator) GetName() string {
+	return v.name
 }
 
-// SetEnabled `n`nfunc (vm *ValidationManager) SetEnabled(enabled bool) {
-	vm.mu.Lock()
-	vm.enabled = enabled
-	vm.mu.Unlock()
-}
-
-// IsEnabled `n�?func (vm *ValidationManager) IsEnabled() bool {
-	vm.mu.RLock()
-	enabled := vm.enabled
-	vm.mu.RUnlock()
+// IsEnabled 检查是否启用
+func (v *CompositeValidator) IsEnabled() bool {
+	v.mu.RLock()
+	enabled := v.enabled
+	v.mu.RUnlock()
 	return enabled
 }
 
-// SetValidationErrorCallback `n`nfunc (vm *ValidationManager) SetValidationErrorCallback(callback func(error, *Entry)) {
-	vm.mu.Lock()
-	vm.onValidationError = callback
-	vm.mu.Unlock()
+// SetEnabled 设置启用状态
+func (v *CompositeValidator) SetEnabled(enabled bool) {
+	v.mu.Lock()
+	v.enabled = enabled
+	v.mu.Unlock()
 }
 
-// GetStats `n`nfunc (vm *ValidationManager) GetStats() ValidationManagerStats {
-	return ValidationManagerStats{
-		TotalEntries:     atomic.LoadInt64(&vm.stats.TotalEntries),
-		ValidEntries:     atomic.LoadInt64(&vm.stats.ValidEntries),
-		InvalidEntries:   atomic.LoadInt64(&vm.stats.InvalidEntries),
-		ValidationErrors: atomic.LoadInt64(&vm.stats.ValidationErrors),
+// GetStats 获取统计信息
+func (v *CompositeValidator) GetStats() ValidationStats {
+	v.mu.RLock()
+	ruleViolations := make(map[string]int64)
+	for k, v := range v.stats.RuleViolations {
+		ruleViolations[k] = v
+	}
+	v.mu.RUnlock()
+	
+	return ValidationStats{
+		TotalValidations:   atomic.LoadInt64(&v.stats.TotalValidations),
+		SuccessValidations: atomic.LoadInt64(&v.stats.SuccessValidations),
+		FailedValidations:  atomic.LoadInt64(&v.stats.FailedValidations),
+		RuleViolations:     ruleViolations,
 	}
 }
 
-// ResetStats `n`nfunc (vm *ValidationManager) ResetStats() {
-	atomic.StoreInt64(&vm.stats.TotalEntries, 0)
-	atomic.StoreInt64(&vm.stats.ValidEntries, 0)
-	atomic.StoreInt64(&vm.stats.InvalidEntries, 0)
-	atomic.StoreInt64(&vm.stats.ValidationErrors, 0)
-}
-
-// GetValidationRate `n�?func (vm *ValidationManager) GetValidationRate() float64 {
-	total := atomic.LoadInt64(&vm.stats.TotalEntries)
-	valid := atomic.LoadInt64(&vm.stats.ValidEntries)
+// ResetStats 重置统计信息
+func (v *CompositeValidator) ResetStats() {
+	atomic.StoreInt64(&v.stats.TotalValidations, 0)
+	atomic.StoreInt64(&v.stats.SuccessValidations, 0)
+	atomic.StoreInt64(&v.stats.FailedValidations, 0)
 	
-	if total == 0 {
-		return 0
-	}
-	
-	return float64(valid) / float64(total)
+	v.mu.Lock()
+	v.stats.RuleViolations = make(map[string]int64)
+	v.mu.Unlock()
 }

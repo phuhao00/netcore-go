@@ -6,18 +6,16 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
-	"net/http"
+	nethttp "net/http"
 	"strconv"
 	"time"
 
-	"github.com/netcore-go/pkg/core"
-	"github.com/netcore-go/pkg/http"
-	"github.com/netcore-go/pkg/middleware"
-	"github.com/netcore-go/pkg/database"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+
+	"github.com/netcore-go/pkg/http"
 )
 
 // Todo represents a todo item
@@ -233,23 +231,26 @@ func NewTodoHandler(service *TodoService) *TodoHandler {
 // @Success 200 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
 // @Router /todos [get]
-func (h *TodoHandler) GetTodos(c *server.Context) error {
+func (h *TodoHandler) GetTodos(c *http.HTTPContext) error {
+	resp := &http.HTTPResponse{
+		Headers: make(map[string]string),
+	}
 	// Parse query parameters
 	var completed *bool
-	if completedStr := c.QueryParam("completed"); completedStr != "" {
+	if completedStr := c.Query("completed"); completedStr != "" {
 		if completedVal, err := strconv.ParseBool(completedStr); err == nil {
 			completed = &completedVal
 		}
 	}
 
-	priority := c.QueryParam("priority")
+	priority := c.Query("priority")
 
-	page, _ := strconv.Atoi(c.QueryParam("page"))
-	if page < 1 {
+	page, _ := strconv.Atoi(c.Query("page"))
+	if page <= 0 {
 		page = 1
 	}
 
-	limit, _ := strconv.Atoi(c.QueryParam("limit"))
+	limit, _ := strconv.Atoi(c.Query("limit"))
 	if limit < 1 || limit > 100 {
 		limit = 10
 	}
@@ -259,7 +260,7 @@ func (h *TodoHandler) GetTodos(c *server.Context) error {
 	// Get todos
 	todos, total, err := h.service.GetAll(completed, priority, limit, offset)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+		return c.JSON(resp, nethttp.StatusInternalServerError, map[string]interface{}{
 			"error": "Failed to retrieve todos",
 		})
 	}
@@ -279,7 +280,7 @@ func (h *TodoHandler) GetTodos(c *server.Context) error {
 		}
 	}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(resp, nethttp.StatusOK, map[string]interface{}{
 		"todos": response,
 		"pagination": map[string]interface{}{
 			"page":       page,
@@ -301,10 +302,13 @@ func (h *TodoHandler) GetTodos(c *server.Context) error {
 // @Failure 404 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
 // @Router /todos/{id} [get]
-func (h *TodoHandler) GetTodo(c *server.Context) error {
+func (h *TodoHandler) GetTodo(c *http.HTTPContext) error {
+	resp := &http.HTTPResponse{
+		Headers: make(map[string]string),
+	}
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+		return c.JSON(resp, nethttp.StatusBadRequest, map[string]interface{}{
 			"error": "Invalid todo ID",
 		})
 	}
@@ -312,11 +316,11 @@ func (h *TodoHandler) GetTodo(c *server.Context) error {
 	todo, err := h.service.GetByID(uint(id))
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return c.JSON(http.StatusNotFound, map[string]interface{}{
-				"error": "Todo not found",
-			})
+			return c.JSON(resp, nethttp.StatusNotFound, map[string]interface{}{
+			"error": "Todo not found",
+		})
 		}
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+		return c.JSON(resp, nethttp.StatusInternalServerError, map[string]interface{}{
 			"error": "Failed to retrieve todo",
 		})
 	}
@@ -332,7 +336,7 @@ func (h *TodoHandler) GetTodo(c *server.Context) error {
 		UpdatedAt:   todo.UpdatedAt,
 	}
 
-	return c.JSON(http.StatusOK, response)
+	return c.JSON(resp, nethttp.StatusOK, response)
 }
 
 // CreateTodo handles POST /todos
@@ -346,23 +350,22 @@ func (h *TodoHandler) GetTodo(c *server.Context) error {
 // @Failure 400 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
 // @Router /todos [post]
-func (h *TodoHandler) CreateTodo(c *server.Context) error {
+func (h *TodoHandler) CreateTodo(c *http.HTTPContext) error {
+	resp := &http.HTTPResponse{
+		Headers: make(map[string]string),
+	}
 	var req TodoRequest
-	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+	if err := c.BindJSON(&req); err != nil {
+		return c.JSON(resp, nethttp.StatusBadRequest, map[string]interface{}{
 			"error": "Invalid request body",
 		})
 	}
 
-	if err := c.Validate(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"error": err.Error(),
-		})
-	}
+	// TODO: Add validation logic here if needed
 
 	todo, err := h.service.Create(&req)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+		return c.JSON(resp, nethttp.StatusInternalServerError, map[string]interface{}{
 			"error": "Failed to create todo",
 		})
 	}
@@ -378,7 +381,7 @@ func (h *TodoHandler) CreateTodo(c *server.Context) error {
 		UpdatedAt:   todo.UpdatedAt,
 	}
 
-	return c.JSON(http.StatusCreated, response)
+	return c.JSON(resp, nethttp.StatusCreated, response)
 }
 
 // UpdateTodo handles PUT /todos/:id
@@ -394,35 +397,34 @@ func (h *TodoHandler) CreateTodo(c *server.Context) error {
 // @Failure 404 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
 // @Router /todos/{id} [put]
-func (h *TodoHandler) UpdateTodo(c *server.Context) error {
+func (h *TodoHandler) UpdateTodo(c *http.HTTPContext) error {
+	resp := &http.HTTPResponse{
+		Headers: make(map[string]string),
+	}
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+		return c.JSON(resp, nethttp.StatusBadRequest, map[string]interface{}{
 			"error": "Invalid todo ID",
 		})
 	}
 
 	var req TodoRequest
-	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+	if err := c.BindJSON(&req); err != nil {
+		return c.JSON(resp, nethttp.StatusBadRequest, map[string]interface{}{
 			"error": "Invalid request body",
 		})
 	}
 
-	if err := c.Validate(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"error": err.Error(),
-		})
-	}
+	// TODO: Add validation logic here if needed
 
 	todo, err := h.service.Update(uint(id), &req)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return c.JSON(http.StatusNotFound, map[string]interface{}{
-				"error": "Todo not found",
-			})
+			return c.JSON(resp, nethttp.StatusNotFound, map[string]interface{}{
+			"error": "Todo not found",
+		})
 		}
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+		return c.JSON(resp, nethttp.StatusInternalServerError, map[string]interface{}{
 			"error": "Failed to update todo",
 		})
 	}
@@ -438,7 +440,7 @@ func (h *TodoHandler) UpdateTodo(c *server.Context) error {
 		UpdatedAt:   todo.UpdatedAt,
 	}
 
-	return c.JSON(http.StatusOK, response)
+	return c.JSON(resp, nethttp.StatusOK, response)
 }
 
 // DeleteTodo handles DELETE /todos/:id
@@ -453,26 +455,32 @@ func (h *TodoHandler) UpdateTodo(c *server.Context) error {
 // @Failure 404 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
 // @Router /todos/{id} [delete]
-func (h *TodoHandler) DeleteTodo(c *server.Context) error {
+func (h *TodoHandler) DeleteTodo(c *http.HTTPContext) error {
+	resp := &http.HTTPResponse{
+		Headers: make(map[string]string),
+	}
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+		return c.JSON(resp, nethttp.StatusBadRequest, map[string]interface{}{
 			"error": "Invalid todo ID",
 		})
 	}
 
 	if err := h.service.Delete(uint(id)); err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return c.JSON(http.StatusNotFound, map[string]interface{}{
-				"error": "Todo not found",
-			})
+			return c.JSON(resp, nethttp.StatusNotFound, map[string]interface{}{
+			"error": "Todo not found",
+		})
 		}
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+		return c.JSON(resp, nethttp.StatusInternalServerError, map[string]interface{}{
 			"error": "Failed to delete todo",
 		})
 	}
 
-	return c.NoContent(http.StatusNoContent)
+	resp.StatusCode = nethttp.StatusNoContent
+	resp.StatusText = "No Content"
+	resp.Body = []byte{}
+	return nil
 }
 
 // ToggleTodo handles PATCH /todos/:id/toggle
@@ -487,10 +495,13 @@ func (h *TodoHandler) DeleteTodo(c *server.Context) error {
 // @Failure 404 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
 // @Router /todos/{id}/toggle [patch]
-func (h *TodoHandler) ToggleTodo(c *server.Context) error {
+func (h *TodoHandler) ToggleTodo(c *http.HTTPContext) error {
+	resp := &http.HTTPResponse{
+		Headers: make(map[string]string),
+	}
 	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+		return c.JSON(resp, nethttp.StatusBadRequest, map[string]interface{}{
 			"error": "Invalid todo ID",
 		})
 	}
@@ -498,11 +509,11 @@ func (h *TodoHandler) ToggleTodo(c *server.Context) error {
 	todo, err := h.service.ToggleComplete(uint(id))
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return c.JSON(http.StatusNotFound, map[string]interface{}{
-				"error": "Todo not found",
-			})
+			return c.JSON(resp, nethttp.StatusNotFound, map[string]interface{}{
+			"error": "Todo not found",
+		})
 		}
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+		return c.JSON(resp, nethttp.StatusInternalServerError, map[string]interface{}{
 			"error": "Failed to toggle todo",
 		})
 	}
@@ -518,7 +529,7 @@ func (h *TodoHandler) ToggleTodo(c *server.Context) error {
 		UpdatedAt:   todo.UpdatedAt,
 	}
 
-	return c.JSON(http.StatusOK, response)
+	return c.JSON(resp, nethttp.StatusOK, response)
 }
 
 // GetStats handles GET /todos/stats
@@ -530,15 +541,36 @@ func (h *TodoHandler) ToggleTodo(c *server.Context) error {
 // @Success 200 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
 // @Router /todos/stats [get]
-func (h *TodoHandler) GetStats(c *server.Context) error {
+func (h *TodoHandler) GetStats(c *http.HTTPContext) error {
+	resp := &http.HTTPResponse{
+		Headers: make(map[string]string),
+	}
 	stats, err := h.service.GetStats()
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+		return c.JSON(resp, nethttp.StatusInternalServerError, map[string]interface{}{
 			"error": "Failed to retrieve statistics",
 		})
 	}
 
-	return c.JSON(http.StatusOK, stats)
+	return c.JSON(resp, nethttp.StatusOK, stats)
+}
+
+// adaptHandler 适配器函数，将返回error的处理器转换为HTTPHandlerFunc
+func adaptHandler(handler func(*http.HTTPContext) error) http.HTTPHandlerFunc {
+	return func(c *http.HTTPContext, resp *http.HTTPResponse) {
+		// 初始化响应
+		resp.Headers = make(map[string]string)
+		
+		// 创建一个临时的HTTPContext来传递给原处理器
+		// 原处理器会在内部创建HTTPResponse并调用c.JSON等方法
+		if err := handler(c); err != nil {
+			// 处理错误
+			resp.StatusCode = nethttp.StatusInternalServerError
+			resp.StatusText = "Internal Server Error"
+			resp.Headers["Content-Type"] = "application/json"
+			resp.Body = []byte(fmt.Sprintf(`{"error":"%s"}`, err.Error()))
+		}
+	}
 }
 
 // @title Todo API
@@ -550,14 +582,7 @@ func (h *TodoHandler) GetStats(c *server.Context) error {
 // @BasePath /api/v1
 func main() {
 	// Database configuration
-	dbConfig := &database.Config{
-		Driver:   "sqlite",
-		Path:     "todos.db",
-		LogLevel: "info",
-	}
-
-	// Connect to database
-	db, err := database.Connect(dbConfig)
+	db, err := gorm.Open(sqlite.Open("todos.db"), &gorm.Config{})
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
@@ -571,28 +596,21 @@ func main() {
 	todoService := NewTodoService(db)
 	todoHandler := NewTodoHandler(todoService)
 
-	// Create NetCore-Go application
-	app := core.New(&core.Config{
-		Name:    "Todo API",
-		Version: "1.0.0",
-		Debug:   true,
-	})
-
 	// Create HTTP server
-	httpServer := server.New(&server.Config{
-		Port: 8080,
-		Host: "localhost",
+	httpServer := http.NewHTTPServer(&http.ServerConfig{
+		Address: "localhost:8080",
 	})
 
 	// Add middleware
-	httpServer.Use(middleware.Logger())
-	httpServer.Use(middleware.Recovery())
-	httpServer.Use(middleware.CORS())
-	httpServer.Use(middleware.RequestID())
+	httpServer.Use(http.DefaultLoggerMiddleware())
+	httpServer.Use(http.DefaultRecoveryMiddleware())
+	httpServer.Use(http.DefaultCORSMiddleware())
+	httpServer.Use(http.DefaultRequestIDMiddleware())
 
 	// Health check endpoint
-	httpServer.GET("/health", func(c *server.Context) error {
-		return c.JSON(http.StatusOK, map[string]interface{}{
+	httpServer.GET("/health", func(c *http.HTTPContext, resp *http.HTTPResponse) {
+		resp.Headers = make(map[string]string)
+		c.JSON(resp, nethttp.StatusOK, map[string]interface{}{
 			"status":    "healthy",
 			"timestamp": time.Now(),
 			"service":   "Todo API",
@@ -604,34 +622,30 @@ func main() {
 	api := httpServer.Group("/api/v1")
 	{
 		// Todo routes
-		api.GET("/todos", todoHandler.GetTodos)
-		api.POST("/todos", todoHandler.CreateTodo)
-		api.GET("/todos/stats", todoHandler.GetStats)
-		api.GET("/todos/:id", todoHandler.GetTodo)
-		api.PUT("/todos/:id", todoHandler.UpdateTodo)
-		api.DELETE("/todos/:id", todoHandler.DeleteTodo)
-		api.PATCH("/todos/:id/toggle", todoHandler.ToggleTodo)
+		api.GET("/todos", adaptHandler(todoHandler.GetTodos))
+		api.POST("/todos", adaptHandler(todoHandler.CreateTodo))
+		api.GET("/todos/stats", adaptHandler(todoHandler.GetStats))
+		api.GET("/todos/:id", adaptHandler(todoHandler.GetTodo))
+		api.PUT("/todos/:id", adaptHandler(todoHandler.UpdateTodo))
+		api.DELETE("/todos/:id", adaptHandler(todoHandler.DeleteTodo))
+		api.PATCH("/todos/:id/toggle", adaptHandler(todoHandler.ToggleTodo))
 	}
-
-	// Add server to application
-	app.AddServer(httpServer)
-
-	// Graceful shutdown
-	app.OnShutdown(func(ctx context.Context) error {
-		log.Println("Closing database connection...")
-		sqlDB, err := db.DB()
-		if err != nil {
-			return err
-		}
-		return sqlDB.Close()
-	})
 
 	// Start the application
 	log.Println("🚀 Starting Todo API server on http://localhost:8080")
 	log.Println("📖 API Documentation: http://localhost:8080/swagger/index.html")
 	log.Println("❤️  Health Check: http://localhost:8080/health")
 
-	if err := app.Run(); err != nil {
+	if err := httpServer.Start(); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}
+
+	// Graceful shutdown
+	defer func() {
+		log.Println("Closing database connection...")
+		sqlDB, err := db.DB()
+		if err == nil {
+			sqlDB.Close()
+		}
+	}()
 }

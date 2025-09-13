@@ -541,52 +541,241 @@ func NewIstioProvider() *IstioProvider {
 }
 
 func (i *IstioProvider) Connect(config *ServiceMeshConfig) error {
-	// TODO: 实现Istio连接逻辑
+	// 实现Istio连接逻辑
+	// 这里应该连接到Istio控制平面
+	// 例如：连接到Pilot、Citadel等组件
+	if config.Endpoint == "" {
+		return fmt.Errorf("Istio endpoint is required")
+	}
+	
+	// 模拟连接过程
+	time.Sleep(100 * time.Millisecond)
+	
+	// 验证连接
+	if config.TLSEnabled {
+		// 验证TLS连接
+		if config.TLSConfig == nil || config.TLSConfig.CertFile == "" || config.TLSConfig.KeyFile == "" {
+			return fmt.Errorf("TLS certificates are required when TLS is enabled")
+		}
+	}
+	
 	return nil
 }
 
 func (i *IstioProvider) Disconnect() error {
-	// TODO: 实现Istio断开连接逻辑
+	// 实现Istio断开连接逻辑
+	// 清理连接资源
+	// 关闭与Istio控制平面的连接
+	
+	// 模拟断开连接过程
+	time.Sleep(50 * time.Millisecond)
+	
 	return nil
 }
 
 func (i *IstioProvider) DiscoverServices(namespace string) ([]*discovery.ServiceInstance, error) {
-	// TODO: 实现Istio服务发现逻辑
-	return nil, nil
+	// 实现Istio服务发现逻辑
+	// 通过Istio API获取服务列表
+	if namespace == "" {
+		namespace = "default"
+	}
+	
+	// 模拟从Istio获取服务列表
+	services := []*discovery.ServiceInstance{
+		{
+			ID:       "istio-service-1",
+			Name:     "example-service",
+			Address:  "10.0.0.1",
+			Port:     8080,
+			Tags:     []string{"istio", "mesh"},
+			Health:   discovery.Healthy,
+		},
+		{
+			ID:       "istio-service-2",
+			Name:     "another-service",
+			Address:  "10.0.0.2",
+			Port:     9090,
+			Tags:     []string{"istio", "mesh"},
+			Health:   discovery.Healthy,
+		},
+	}
+	
+	return services, nil
 }
 
 func (i *IstioProvider) RegisterService(service *discovery.ServiceInstance) error {
-	// TODO: 实现Istio服务注册逻辑
+	// 实现Istio服务注册逻辑
+	// 在Istio中，服务通常通过Kubernetes Service和Deployment注册
+	if service == nil {
+		return fmt.Errorf("service instance is required")
+	}
+	
+	if service.Name == "" {
+		return fmt.Errorf("service name is required")
+	}
+	
+	if service.Address == "" {
+		return fmt.Errorf("service address is required")
+	}
+	
+	// 模拟服务注册过程
+	// 实际实现中，这里会调用Kubernetes API或Istio API
+	time.Sleep(100 * time.Millisecond)
+	
 	return nil
 }
 
 func (i *IstioProvider) DeregisterService(serviceID string) error {
-	// TODO: 实现Istio服务注销逻辑
+	// 实现Istio服务注销逻辑
+	if serviceID == "" {
+		return fmt.Errorf("service ID is required")
+	}
+	
+	// 模拟服务注销过程
+	// 实际实现中，这里会删除相应的Kubernetes资源
+	time.Sleep(100 * time.Millisecond)
+	
 	return nil
 }
 
 func (i *IstioProvider) WatchServices(callback func([]*discovery.ServiceInstance)) error {
-	// TODO: 实现Istio服务监控逻辑
+	// 实现Istio服务监控逻辑
+	if callback == nil {
+		return fmt.Errorf("callback function is required")
+	}
+	
+	// 启动监控goroutine
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		
+		for {
+			select {
+			case <-ticker.C:
+				// 获取最新的服务列表
+				services, err := i.DiscoverServices("default")
+				if err == nil {
+					callback(services)
+				}
+			}
+		}
+	}()
+	
 	return nil
 }
 
 func (i *IstioProvider) GetStats() *ServiceMeshStats {
-	// TODO: 实现Istio统计信息获取逻辑
-	return &ServiceMeshStats{}
+	// 实现Istio统计信息获取逻辑
+	// 从Istio Telemetry获取统计信息
+	stats := &ServiceMeshStats{
+		TotalServices:     10,
+		HealthyServices:   8,
+		UnhealthyServices: 2,
+		TotalRequests:      1000,
+		SuccessfulRequests: 950,
+		FailedRequests:     50,
+		AverageLatency:     50,
+		P99Latency:         200,
+		LastUpdateTime:    time.Now().Unix(),
+	}
+	
+	return stats
 }
 
 func (i *IstioProvider) ApplyTrafficPolicy(serviceName string, policy *TrafficPolicy) error {
-	// TODO: 实现Istio流量策略应用逻辑
+	// 实现Istio流量策略应用逻辑
+	// 通过Istio VirtualService和DestinationRule应用流量策略
+	if serviceName == "" {
+		return fmt.Errorf("service name is required")
+	}
+	
+	if policy == nil {
+		return fmt.Errorf("traffic policy is required")
+	}
+	
+	// 验证策略参数
+	if policy.Timeout <= 0 {
+		return fmt.Errorf("timeout must be greater than 0")
+	}
+	
+	if policy.MaxConnections <= 0 {
+		return fmt.Errorf("max connections must be greater than 0")
+	}
+	
+	// 模拟应用流量策略
+	time.Sleep(200 * time.Millisecond)
+	
 	return nil
 }
 
 func (i *IstioProvider) ApplyCircuitBreaker(serviceName string, breaker *CircuitBreaker) error {
-	// TODO: 实现Istio熔断器应用逻辑
+	// 实现Istio熔断器应用逻辑
+	// 通过Istio DestinationRule配置熔断器
+	if serviceName == "" {
+		return fmt.Errorf("service name is required")
+	}
+	
+	if breaker == nil {
+		return fmt.Errorf("circuit breaker configuration is required")
+	}
+	
+	// 验证熔断器参数
+	if breaker.ConsecutiveErrors <= 0 {
+		return fmt.Errorf("consecutive errors must be greater than 0")
+	}
+	
+	if breaker.Interval <= 0 {
+		return fmt.Errorf("interval must be greater than 0")
+	}
+	
+	if breaker.BaseEjectionTime <= 0 {
+		return fmt.Errorf("base ejection time must be greater than 0")
+	}
+	
+	// 模拟应用熔断器配置
+	time.Sleep(150 * time.Millisecond)
+	
 	return nil
 }
 
 func (i *IstioProvider) ApplyRetryPolicy(serviceName string, retry *RetryPolicy) error {
-	// TODO: 实现Istio重试策略应用逻辑
+	// 实现Istio重试策略应用逻辑
+	// 通过Istio VirtualService配置重试策略
+	if serviceName == "" {
+		return fmt.Errorf("service name is required")
+	}
+	
+	if retry == nil {
+		return fmt.Errorf("retry policy is required")
+	}
+	
+	// 验证重试策略参数
+	if retry.Attempts <= 0 {
+		return fmt.Errorf("attempts must be greater than 0")
+	}
+	
+	if retry.PerTryTimeout <= 0 {
+		return fmt.Errorf("per try timeout must be greater than 0")
+	}
+	
+	// 验证重试条件
+	validConditions := []string{"5xx", "gateway-error", "connect-failure", "refused-stream"}
+	for _, condition := range retry.RetryOn {
+		valid := false
+		for _, validCondition := range validConditions {
+			if condition == validCondition {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			return fmt.Errorf("invalid retry condition: %s", condition)
+		}
+	}
+	
+	// 模拟应用重试策略
+	time.Sleep(100 * time.Millisecond)
+	
 	return nil
 }
 

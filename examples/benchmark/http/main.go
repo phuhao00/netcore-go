@@ -1,4 +1,4 @@
-﻿// Package main HTTP性能测试示例
+// Package main HTTP性能测试示例
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -268,13 +268,11 @@ func main() {
 	server.SetHandler(handler)
 
 	// 设置路由
-	if httpServer, ok := server.(*netcorehttp.HTTPServer); ok {
-		handler.setupBenchmarkRoutes(httpServer)
-	}
+	handler.setupBenchmarkRoutes(server)
 
 	// 启动服务器
 	go func() {
-		if err := server.Start(":8084"); err != nil {
+		if err := server.StartWithAddr(":8084"); err != nil {
 			fmt.Printf("Failed to start server: %v\n", err)
 			return
 		}
