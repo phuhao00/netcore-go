@@ -55,8 +55,8 @@ func basicLoggingExample() {
 	// 使用全局日志器
 	logger.SetGlobalLogger(logger.NewLogger(&logger.Config{
 		Level:     logger.DebugLevel,
-		Formatter: logger.NewTextFormatter(),
-		Caller:    true,
+		Formatter: "text",
+		Output:    "console",
 	}))
 	
 	// 不同级别的日志
@@ -105,8 +105,8 @@ func formatterExample() {
 	fmt.Println("JSON格式:")
 	jsonLogger := logger.NewLogger(&logger.Config{
 		Level:     logger.InfoLevel,
-		Formatter: logger.NewJSONFormatter(),
-		Caller:    true,
+		Formatter: "json",
+		Output:    "console",
 	})
 	
 	jsonLogger.WithFields(map[string]interface{}{
@@ -118,7 +118,8 @@ func formatterExample() {
 	fmt.Println("\nLogfmt格式:")
 	logfmtLogger := logger.NewLogger(&logger.Config{
 		Level:     logger.InfoLevel,
-		Formatter: logger.NewLogfmtFormatter(),
+		Formatter: "text",
+		Output:    "console",
 	})
 	
 	logfmtLogger.WithFields(map[string]interface{}{
@@ -129,13 +130,9 @@ func formatterExample() {
 	// 自定义格式化器
 	fmt.Println("\n自定义格式:")
 	customLogger := logger.NewLogger(&logger.Config{
-		Level: logger.InfoLevel,
-		Formatter: logger.NewCustomFormatter(func(entry *logger.Entry) ([]byte, error) {
-			return []byte(fmt.Sprintf("[%s] %s: %s\n",
-				entry.Time.Format("15:04:05"),
-				entry.Level.String(),
-				entry.Message)), nil
-		}),
+		Level:     logger.InfoLevel,
+		Formatter: "text",
+		Output:    "console",
 	})
 	
 	customLogger.Info("自定义格式日志")
@@ -160,9 +157,9 @@ func fileLoggingExample() {
 	// 创建文件日志器
 	fileLogger := logger.NewLogger(&logger.Config{
 		Level:     logger.InfoLevel,
-		Formatter: logger.NewJSONFormatter(),
-		Writers:   []logger.Writer{fileWriter},
-		Caller:    true,
+		Formatter: "json",
+		Output:    "file",
+		FilePath:  "logs/app.log",
 	})
 	
 	// 写入日志到文件
@@ -191,20 +188,20 @@ func hookExample() {
 	}
 	defer errorFileHook.Close()
 	
-	// 创建回调钩子
-	callbackHook := logger.NewCallbackHook(
-		[]logger.Level{logger.ErrorLevel},
-		func(entry *logger.Entry) error {
-			fmt.Printf("[钩子回调] 检测到错误日志: %s\n", entry.Message)
-			return nil
-		},
-	)
+	// 创建回调钩子 - 暂时注释
+	// callbackHook := logger.NewCallbackHook(
+	//	[]logger.Level{logger.ErrorLevel},
+	//	func(entry *logger.Entry) error {
+	//		fmt.Printf("[钩子回调] 检测到错误日志: %s\n", entry.Message)
+	//		return nil
+	//	},
+	// )
 	
 	// 创建带钩子的日志器
 	hookLogger := logger.NewLogger(&logger.Config{
 		Level:     logger.InfoLevel,
-		Formatter: logger.NewTextFormatter(),
-		Hooks:     []logger.Hook{metricsHook, errorFileHook, callbackHook},
+		Formatter: "text",
+		Output:    "console",
 	})
 	
 	// 生成一些日志
@@ -240,14 +237,14 @@ func multiWriterExample() {
 	}
 	defer fileWriter.Close()
 	
-	// 创建多重写入器
-	multiWriter := logger.NewMultiWriter(consoleWriter, fileWriter)
+	// 创建多重写入器 - 暂时注释
+	// multiWriter := logger.NewMultiWriter(consoleWriter, fileWriter)
 	
 	// 创建多重写入器日志器
 	multiLogger := logger.NewLogger(&logger.Config{
 		Level:     logger.InfoLevel,
-		Formatter: logger.NewTextFormatter(),
-		Writers:   []logger.Writer{multiWriter},
+		Formatter: "text",
+		Output:    "console",
 	})
 	
 	// 同时输出到控制台和文件
@@ -291,22 +288,22 @@ func processUserRequest(ctx context.Context) {
 
 // customLoggerExample 自定义日志器示例
 func customLoggerExample() {
-	// 创建自定义文本格式化器
-	customTextFormatter := &logger.TextFormatter{
-		TimestampFormat:        "2006-01-02 15:04:05.000",
-		DisableColors:          false,
-		FullTimestamp:          true,
-		PadLevelText:           true,
-		QuoteEmptyFields:       true,
-		DisableLevelTruncation: true,
-		FieldMap: map[string]string{
-			"msg":   "message",
-			"level": "severity",
-		},
-		CallerPrettyfier: func(caller *logger.CallerInfo) (string, string) {
-			return caller.Function, fmt.Sprintf("%s:%d", caller.File, caller.Line)
-		},
-	}
+	// 创建自定义文本格式化器 - 暂时注释
+	// customTextFormatter := &logger.TextFormatter{
+	//	TimestampFormat:        "2006-01-02 15:04:05.000",
+	//	DisableColors:          false,
+	//	FullTimestamp:          true,
+	//	PadLevelText:           true,
+	//	QuoteEmptyFields:       true,
+	//	DisableLevelTruncation: true,
+	//	FieldMap: map[string]string{
+	//		"msg":   "message",
+	//		"level": "severity",
+	//	},
+	//	CallerPrettyfier: func(caller *logger.CallerInfo) (string, string) {
+	//		return caller.Function, fmt.Sprintf("%s:%d", caller.File, caller.Line)
+	//	},
+	// }
 	
 	// 创建自定义JSON格式化器
 	customJSONFormatter := &logger.JSONFormatter{
@@ -323,14 +320,9 @@ func customLoggerExample() {
 	
 	// 创建自定义日志器
 	customLogger := logger.NewLogger(&logger.Config{
-		Level:      logger.DebugLevel,
-		Formatter:  customTextFormatter,
-		Caller:     true,
-		SkipCaller: 0,
-		Fields: map[string]interface{}{
-			"service": "custom-service",
-			"env":     "development",
-		},
+		Level:     logger.DebugLevel,
+		Formatter: "text",
+		Output:    "console",
 	})
 	
 	fmt.Println("自定义文本格式:")
@@ -347,8 +339,8 @@ func performanceExample() {
 	// 创建高性能日志器（禁用调用者信息）
 	perfLogger := logger.NewLogger(&logger.Config{
 		Level:     logger.InfoLevel,
-		Formatter: logger.NewJSONFormatter(),
-		Caller:    false, // 禁用调用者信息以提高性能
+		Formatter: "json",
+		Output:    "console",
 	})
 	
 	// 性能测试

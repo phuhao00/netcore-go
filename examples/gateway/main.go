@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -792,8 +790,8 @@ func main() {
 	// 初始化日志
 	logger.SetGlobalLogger(logger.NewLogger(&logger.Config{
 		Level:     logger.InfoLevel,
-		Formatter: logger.NewJSONFormatter(),
-		Caller:    true,
+		Formatter: "json",
+		Output:    "console",
 	}))
 	
 	// 加载配置
