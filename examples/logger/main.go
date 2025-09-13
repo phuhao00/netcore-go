@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/netcore-go/pkg/logger"
@@ -224,7 +223,7 @@ func hookExample() {
 // multiWriterExample 多重写入器示例
 func multiWriterExample() {
 	// 创建控制台写入器
-	consoleWriter := &logger.ConsoleWriter{Output: os.Stdout}
+	// consoleWriter := &logger.ConsoleWriter{Output: os.Stdout}
 	
 	// 创建文件写入器
 	fileWriter, err := logger.NewFileWriter(&logger.FileWriterConfig{

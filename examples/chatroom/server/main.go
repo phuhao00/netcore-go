@@ -4,11 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -94,9 +92,6 @@ func (c *Client) ReadPump() {
 		
 		// 发送到Hub处理
 		c.Hub.Broadcast <- &msg
-		
-		// 更新指标
-		metrics.DefaultRegistry.(*metrics.Registry)
 	}
 }
 
