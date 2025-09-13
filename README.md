@@ -237,42 +237,6 @@ func main() {
 | **高级服务器** | 企业级服务器配置 | `examples/advanced/` |
 | **HTTP/3服务器** | HTTP/3协议支持 | `examples/http3/` |
 
-### 🔧 工具和配置示例
-| 示例 | 功能 | 位置 |
-|------|------|------|
-| **日志系统** | 结构化日志记录 | `examples/logger/` |
-| **性能监控** | 系统性能指标 | `examples/metrics/` |
-| **配置管理** | 动态配置加载 | `examples/config/` |
-| **测试框架** | 自动化测试 | `examples/testing/` |
-| **文件传输** | 高效文件传输 | `examples/filetransfer/` |
-| **文件上传** | HTTP文件上传 | `examples/file-upload/` |
-
-### 🏢 企业应用示例
-| 示例 | 功能 | 位置 |
-|------|------|------|
-| **博客平台** | 完整的博客系统 | `examples/blog-platform/` |
-| **电商系统** | 电商后端服务 | `examples/ecommerce/` |
-| **Todo API** | RESTful API示例 | `examples/todo-api/` |
-| **聊天应用** | 即时通讯应用 | `examples/chat-app/` |
-| **服务发现** | 微服务发现机制 | `examples/discovery/` |
-
-### 🚀 性能测试示例
-| 示例 | 功能 | 位置 |
-|------|------|------|
-| **HTTP基准测试** | HTTP性能测试 | `examples/benchmark/http/` |
-| **TCP基准测试** | TCP性能测试 | `examples/benchmark/tcp/` |
-| **UDP基准测试** | UDP性能测试 | `examples/benchmark/udp/` |
-
-## 📊 项目状态
-
-| 🎯 指标 | 📈 状态 | 🏆 等级 |
-|---------|---------|--------|
-| 🔧 编译状态 | 100%成功 | ⭐⭐⭐⭐⭐ |
-| 📦 示例程序 | 20+个完整示例 | ⭐⭐⭐⭐⭐ |
-| 🌐 协议支持 | 7+种网络协议 | ⭐⭐⭐⭐⭐ |
-| 🏗️ 架构设计 | 模块化设计 | ⭐⭐⭐⭐⭐ |
-| 📚 文档完整性 | 完整文档 | ⭐⭐⭐⭐⭐ |
-| 🚀 生产就绪 | 稳定版本v1.0.1 | ⭐⭐⭐⭐⭐ |
 
 *🖥️ 开发环境: Go 1.21+, 支持 Linux/macOS/Windows*
 
@@ -309,9 +273,6 @@ func main() {
 | **alert** | 告警系统 | `pkg/alert/` |
 | **dev** | 开发工具 | `pkg/dev/` |
 
-## 🤝 贡献指南
-
-我们欢迎社区贡献！请查看 [贡献指南](CONTRIBUTING.md) 了解详情。
 
 ### 🛠️ 开发环境设置
 ```bash
@@ -324,30 +285,6 @@ go mod tidy
 
 # 编译检查
 go build ./...
-
-# 运行示例
-cd examples/advanced
-go run main.go
-```
-
-### 🧪 运行示例程序
-```bash
-# HTTP服务器示例
-cd examples/http/server
-go run main.go
-
-# TCP服务器示例
-cd examples/tcp/server
-go run main.go
-
-# 游戏服务器示例
-cd examples/gameserver
-go run main.go
-
-# 负载均衡器示例
-cd examples/loadbalancer
-go run main.go
-```
 
 ## 💬 社区讨论
 
