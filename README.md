@@ -151,28 +151,20 @@ go get github.com/phuhao00/netcore-go@v1.0.1
 | **高级服务器** | 企业级服务器配置 | `examples/advanced/` |
 | **HTTP/3服务器** | HTTP/3协议支持 | `examples/http3/` |
 
-
-
-## 💬 社区讨论
-
-欢迎加入我们的技术讨论社区！
-
-### 📺 B站专栏
+## 📺 B站专栏
 [![Bilibili](https://img.shields.io/badge/📺_B站专栏-技术讨论-00A1D6?style=for-the-badge&logo=bilibili)](https://www.bilibili.com/opus/1111923984504455171)
 
 🎯 **欢迎访问我的B站专栏进行技术讨论和交流**
 - 💡 分享NetCore-Go使用经验
 - 🔧 讨论网络编程最佳实践
-- 🚀 获取最新功能更新
 - 🤝 与其他开发者交流心得
 
 [👉 点击进入专栏讨论](https://www.bilibili.com/opus/1111923984504455171)
 
 ## ☕ 赞助支持
-
+*💝 感谢每一位支持者的贡献，让NetCore-Go变得更好！*
 如果这个项目对您有帮助，欢迎请作者喝一杯咖啡！您的支持是我们持续改进的动力。
-
 ![请作者喝咖啡](coffee.jpg)
 
 
-*💝 感谢每一位支持者的贡献，让NetCore-Go变得更好！*
+
