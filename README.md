@@ -126,92 +126,6 @@ NetCore-Go 是一个专业的Go网络库，提供完整的网络协议栈支持�
 go get github.com/phuhao00/netcore-go@v1.0.1
 ```
 
-### 🌐 HTTP服务器示例
-```go
-package main
-
-import (
-    "log"
-    "github.com/phuhao00/netcore-go"
-    "github.com/phuhao00/netcore-go/pkg/core"
-)
-
-func main() {
-    // 创建服务器
-    server := netcore.NewServer(nil)
-    
-    // 设置消息处理器
-    server.SetMessageHandler(func(conn core.Connection, data []byte) {
-        // 处理接收到的消息
-        log.Printf("收到消息: %s", string(data))
-        
-        // 回复消息
-        response := core.NewMessage(core.MessageTypeText, []byte("Hello, NetCore-Go!"))
-        conn.SendMessage(*response)
-    })
-    
-    // 启动服务器
-    log.Println("服务器启动在 :8080")
-    if err := server.Start(":8080"); err != nil {
-        log.Fatal("启动服务器失败:", err)
-    }
-}
-```
-
-### 🔗 gRPC服务器示例
-```go
-package main
-
-import (
-    "log"
-    "github.com/phuhao00/netcore-go/pkg/grpc"
-)
-
-func main() {
-    // 创建gRPC服务器
-    server := grpc.NewServer()
-    
-    // 注册服务
-    // server.RegisterService(&MyService{})
-    
-    // 启动服务器
-    log.Println("gRPC服务器启动在 :9090")
-    if err := server.Listen(":9090"); err != nil {
-        log.Fatal("启动gRPC服务器失败:", err)
-    }
-}
-```
-
-### 💬 WebSocket服务器示例
-```go
-package main
-
-import (
-    "log"
-    "github.com/phuhao00/netcore-go/pkg/websocket"
-)
-
-func main() {
-    // 创建WebSocket服务器
-    server := websocket.NewServer()
-    
-    // 处理连接
-    server.OnConnect(func(conn *websocket.Conn) {
-        log.Println("新的WebSocket连接")
-        conn.OnMessage(func(msg []byte) {
-            // 回显消息
-            conn.Send(msg)
-        })
-    })
-    
-    // 启动服务器
-    log.Println("WebSocket服务器启动在 :8081")
-    if err := server.Listen(":8081"); err != nil {
-        log.Fatal("启动WebSocket服务器失败:", err)
-    }
-}
-```
-
 ## 📁 示例程序
 
 项目提供了丰富的示例程序，帮助您快速上手：
@@ -238,54 +152,7 @@ func main() {
 | **HTTP/3服务器** | HTTP/3协议支持 | `examples/http3/` |
 
 
-*🖥️ 开发环境: Go 1.21+, 支持 Linux/macOS/Windows*
 
-## 🏗️ 项目架构
-
-### 📦 核心包结构
-| 📦 包名 | 🎯 功能 | 📍 位置 |
-|---------|--------|--------|
-| **core** | 核心抽象层 | `pkg/core/` |
-| **http** | HTTP服务器 | `pkg/http/` |
-| **grpc** | gRPC服务器 | `pkg/grpc/` |
-| **websocket** | WebSocket服务器 | `pkg/websocket/` |
-| **tcp** | TCP服务器 | `pkg/tcp/` |
-| **udp** | UDP服务器 | `pkg/udp/` |
-| **kcp** | KCP协议支持 | `pkg/kcp/` |
-| **rpc** | 自定义RPC框架 | `pkg/rpc/` |
-| **pool** | 连接池管理 | `pkg/pool/` |
-| **security** | 安全认证 | `pkg/security/` |
-| **metrics** | 性能监控 | `pkg/metrics/` |
-| **logger** | 日志系统 | `pkg/logger/` |
-| **middleware** | 中间件系统 | `pkg/middleware/` |
-| **health** | 健康检查 | `pkg/health/` |
-| **tracing** | 链路追踪 | `pkg/tracing/` |
-
-### 🔧 工具包
-| 📦 包名 | 🎯 功能 | 📍 位置 |
-|---------|--------|--------|
-| **config** | 配置管理 | `pkg/config/` |
-| **database** | 数据库抽象 | `pkg/database/` |
-| **queue** | 消息队列 | `pkg/queue/` |
-| **discovery** | 服务发现 | `pkg/discovery/` |
-| **graceful** | 优雅关闭 | `pkg/graceful/` |
-| **testing** | 测试框架 | `pkg/testing/` |
-| **alert** | 告警系统 | `pkg/alert/` |
-| **dev** | 开发工具 | `pkg/dev/` |
-
-
-### 🛠️ 开发环境设置
-```bash
-# 克隆仓库
-git clone https://github.com/phuhao00/netcore-go.git
-cd netcore-go
-
-# 安装依赖
-go mod tidy
-
-# 编译检查
-go build ./...
-```
 ## 💬 社区讨论
 
 欢迎加入我们的技术讨论社区！
