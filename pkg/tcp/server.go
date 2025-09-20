@@ -1,11 +1,11 @@
-﻿// Package tcp 实现NetCore-Go网络库的TCP服务器
+// Package tcp 实现NetCore-Go网络库的TCP服务器
 // Author: NetCore-Go Team
 // Created: 2024
 
 package tcp
 
 import (
-	"github.com/netcore-go/pkg/core"
+	"github.com/phuhao00/netcore-go/pkg/core"
 )
 
 // TCPServer TCP服务器实现

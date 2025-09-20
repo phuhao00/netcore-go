@@ -11,10 +11,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/netcore-go"
-	"github.com/netcore-go/pkg/core"
-	"github.com/netcore-go/pkg/heartbeat"
-	"github.com/netcore-go/pkg/pool"
+	"github.com/phuhao00/netcore-go"
+	"github.com/phuhao00/netcore-go/pkg/core"
+	"github.com/phuhao00/netcore-go/pkg/heartbeat"
+	"github.com/phuhao00/netcore-go/pkg/pool"
 )
 
 // LoadBalancingAlgorithm 负载均衡算法
@@ -31,40 +31,40 @@ const (
 
 // BackendServer 后端服务器
 type BackendServer struct {
-	ID          string    `json:"id"`
-	Address     string    `json:"address"`
-	Weight      int       `json:"weight"`
-	Connections int64     `json:"connections"`
-	Healthy     bool      `json:"healthy"`
-	LastCheck   time.Time `json:"last_check"`
-	ResponseTime int64    `json:"response_time"` // microseconds
-	TotalRequests int64   `json:"total_requests"`
-	FailedRequests int64  `json:"failed_requests"`
-	Server      core.Server `json:"-"`
-	mu          sync.RWMutex    `json:"-"`
+	ID             string       `json:"id"`
+	Address        string       `json:"address"`
+	Weight         int          `json:"weight"`
+	Connections    int64        `json:"connections"`
+	Healthy        bool         `json:"healthy"`
+	LastCheck      time.Time    `json:"last_check"`
+	ResponseTime   int64        `json:"response_time"` // microseconds
+	TotalRequests  int64        `json:"total_requests"`
+	FailedRequests int64        `json:"failed_requests"`
+	Server         core.Server  `json:"-"`
+	mu             sync.RWMutex `json:"-"`
 }
 
 // LoadBalancer 负载均衡器
 type LoadBalancer struct {
-	servers     []*BackendServer
-	algorithm   LoadBalancingAlgorithm
+	servers      []*BackendServer
+	algorithm    LoadBalancingAlgorithm
 	currentIndex int64
-	heartbeat   *heartbeat.HeartbeatDetector
-	stats       *LoadBalancerStats
-	mu          sync.RWMutex
+	heartbeat    *heartbeat.HeartbeatDetector
+	stats        *LoadBalancerStats
+	mu           sync.RWMutex
 }
 
 // LoadBalancerStats 负载均衡器统计
 type LoadBalancerStats struct {
-	TotalRequests    int64 `json:"total_requests"`
-	SuccessfulRequests int64 `json:"successful_requests"`
-	FailedRequests   int64 `json:"failed_requests"`
+	TotalRequests       int64 `json:"total_requests"`
+	SuccessfulRequests  int64 `json:"successful_requests"`
+	FailedRequests      int64 `json:"failed_requests"`
 	AverageResponseTime int64 `json:"average_response_time"`
-	ActiveConnections int64 `json:"active_connections"`
-	HealthyServers   int   `json:"healthy_servers"`
-	TotalServers     int   `json:"total_servers"`
-	LastUpdateTime   int64 `json:"last_update_time"`
-	mu               sync.RWMutex
+	ActiveConnections   int64 `json:"active_connections"`
+	HealthyServers      int   `json:"healthy_servers"`
+	TotalServers        int   `json:"total_servers"`
+	LastUpdateTime      int64 `json:"last_update_time"`
+	mu                  sync.RWMutex
 }
 
 // ProxyServer 代理服务器
@@ -77,11 +77,11 @@ type ProxyServer struct {
 
 // ProxyStats 代理统计
 type ProxyStats struct {
-	TotalConnections int64 `json:"total_connections"`
+	TotalConnections  int64 `json:"total_connections"`
 	ActiveConnections int64 `json:"active_connections"`
-	BytesTransferred int64 `json:"bytes_transferred"`
-	LastUpdateTime   int64 `json:"last_update_time"`
-	mu               sync.RWMutex
+	BytesTransferred  int64 `json:"bytes_transferred"`
+	LastUpdateTime    int64 `json:"last_update_time"`
+	mu                sync.RWMutex
 }
 
 // RequestMessage 请求消息
@@ -168,8 +168,8 @@ func (bs *BackendServer) handleMessage(conn core.Connection, data []byte) {
 		RequestID: req.ID,
 		Type:      "response",
 		Data: map[string]interface{}{
-			"message":        fmt.Sprintf("Hello from server %s", bs.ID),
-			"request_data":   req.Data,
+			"message":         fmt.Sprintf("Hello from server %s", bs.ID),
+			"request_data":    req.Data,
 			"processing_time": processingTime.String(),
 		},
 		ServerID:   bs.ID,
@@ -434,7 +434,7 @@ func (lb *LoadBalancer) checkServerHealth(server *BackendServer) bool {
 
 	// 这里可以实现更复杂的健康检查逻辑
 	// 比如发送特定的健康检查请求
-	_ = ctx // 暂时忽略ctx，避免编译错误
+	_ = ctx     // 暂时忽略ctx，避免编译错误
 	return true // 简化实现，总是返回健康
 }
 
@@ -541,7 +541,7 @@ func (ps *ProxyServer) handleConnect(conn core.Connection) {
 	// 添加到连接池
 	// ps.pool.AddConnection(conn) // 暂时注释掉，接口不匹配
 
-	log.Printf("代理服务器: 新连接 %s (活跃连接: %d)", 
+	log.Printf("代理服务器: 新连接 %s (活跃连接: %d)",
 		conn.RemoteAddr(), atomic.LoadInt64(&ps.stats.ActiveConnections))
 }
 
@@ -552,7 +552,7 @@ func (ps *ProxyServer) handleDisconnect(conn core.Connection) {
 	// 从连接池移除
 	// ps.pool.RemoveConnection(conn) // 暂时注释掉，接口不匹配
 
-	log.Printf("代理服务器: 连接断开 %s (活跃连接: %d)", 
+	log.Printf("代理服务器: 连接断开 %s (活跃连接: %d)",
 		conn.RemoteAddr(), atomic.LoadInt64(&ps.stats.ActiveConnections))
 }
 
@@ -605,8 +605,8 @@ func (ps *ProxyServer) forwardRequest(clientConn core.Connection, backendServer 
 		RequestID: req.ID,
 		Type:      "response",
 		Data: map[string]interface{}{
-			"message":      fmt.Sprintf("Hello from backend server %s via proxy", backendServer.ID),
-			"request_data": req.Data,
+			"message":        fmt.Sprintf("Hello from backend server %s via proxy", backendServer.ID),
+			"request_data":   req.Data,
 			"backend_server": backendServer.ID,
 		},
 		Headers: map[string]string{
@@ -632,7 +632,7 @@ func (ps *ProxyServer) forwardRequest(clientConn core.Connection, backendServer 
 	atomic.AddInt64(&backendServer.TotalRequests, 1)
 	atomic.StoreInt64(&backendServer.ResponseTime, time.Since(start).Microseconds())
 
-	log.Printf("代理转发: 请求 %s -> 后端服务器 %s (耗时: %v)", 
+	log.Printf("代理转发: 请求 %s -> 后端服务器 %s (耗时: %v)",
 		req.ID, backendServer.ID, time.Since(start))
 }
 
@@ -661,7 +661,7 @@ func (ps *ProxyServer) updateStats() {
 		ps.stats.LastUpdateTime = time.Now().Unix()
 		ps.stats.mu.Unlock()
 
-		log.Printf("代理统计 - 总连接: %d, 活跃连接: %d, 传输字节: %d", 
+		log.Printf("代理统计 - 总连接: %d, 活跃连接: %d, 传输字节: %d",
 			atomic.LoadInt64(&ps.stats.TotalConnections),
 			atomic.LoadInt64(&ps.stats.ActiveConnections),
 			atomic.LoadInt64(&ps.stats.BytesTransferred))
@@ -805,5 +805,3 @@ func main() {
 		log.Fatalf("启动代理服务器失败: %v", err)
 	}
 }
-
-

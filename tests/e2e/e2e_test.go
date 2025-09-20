@@ -6,7 +6,7 @@ package e2e
 
 import (
 	"bytes"
-	"context"
+
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,11 +14,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
+
 	"testing"
 	"time"
 
-	"github.com/netcore-go/pkg/testing"
+
 )
 
 // E2ETestSuite 端到端测试套件
@@ -109,7 +109,7 @@ func (s *E2ETestSuite) createTestProject() error {
 go 1.21
 
 require (
-	github.com/netcore-go v0.1.0
+	github.com/phuhao00/netcore-go v0.1.0
 )
 `
 	if err := os.WriteFile(filepath.Join(s.testDir, "go.mod"), []byte(goMod), 0644); err != nil {
@@ -130,7 +130,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/netcore-go/pkg/core"
+	"github.com/phuhao00/netcore-go/pkg/core"
 )
 
 type User struct {

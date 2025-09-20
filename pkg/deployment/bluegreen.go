@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/netcore-go/pkg/health"
+	"github.com/phuhao00/netcore-go/pkg/health"
 )
 
 // DeploymentColor 部署颜色

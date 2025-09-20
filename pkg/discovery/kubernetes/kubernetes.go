@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/netcore-go/pkg/discovery"
+	"github.com/phuhao00/netcore-go/pkg/discovery"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

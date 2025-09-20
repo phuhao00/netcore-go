@@ -5,13 +5,13 @@
 package netcore
 
 import (
-	"github.com/netcore-go/pkg/core"
-	"github.com/netcore-go/pkg/http"
-	"github.com/netcore-go/pkg/kcp"
-	"github.com/netcore-go/pkg/rpc"
-	"github.com/netcore-go/pkg/tcp"
-	"github.com/netcore-go/pkg/udp"
-	"github.com/netcore-go/pkg/websocket"
+	"github.com/phuhao00/netcore-go/pkg/core"
+	"github.com/phuhao00/netcore-go/pkg/http"
+	"github.com/phuhao00/netcore-go/pkg/kcp"
+	"github.com/phuhao00/netcore-go/pkg/rpc"
+	"github.com/phuhao00/netcore-go/pkg/tcp"
+	"github.com/phuhao00/netcore-go/pkg/udp"
+	"github.com/phuhao00/netcore-go/pkg/websocket"
 )
 
 // NewTCPServer 创建TCP服务器
@@ -35,18 +35,18 @@ func NewRPCServer(opts ...core.ServerOption) *rpc.RPCServer {
 }
 
 // NewServer 创建通用服务器
-func NewServer(config *Config) core.Server {
-	return tcp.NewTCPServer()
+func NewServer(opts ...core.ServerOption) core.Server {
+	return tcp.NewTCPServer(opts...)
 }
 
 // NewHTTPServer 创建HTTP服务器
 func NewHTTPServer(opts ...core.ServerOption) *http.HTTPServer {
-	// 创建HTTP服务器配置
-	httpConfig := &http.ServerConfig{
-		Address: ":8080",
-		Port:    8080,
+	// 使用core配置创建HTTP服务器
+	coreConfig := core.DefaultServerConfig()
+	for _, opt := range opts {
+		opt(coreConfig)
 	}
-	return http.NewHTTPServer(httpConfig)
+	return http.NewHTTPServerWithCoreConfig(coreConfig)
 }
 
 // NewKCPServer 创建KCP服务器
@@ -54,7 +54,10 @@ func NewKCPServer(opts ...core.ServerOption) *kcp.KCPServer {
 	return kcp.NewKCPServer(opts...)
 }
 
-// Config 服务器配置
+// ServerConfig 服务器配置（别名）
+type ServerConfig = core.ServerConfig
+
+// Config 服务器配置（向后兼容）
 type Config struct {
 	Host string `json:"host"`
 	Port int    `json:"port"`

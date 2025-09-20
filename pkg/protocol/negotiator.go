@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/netcore-go/pkg/http2"
-	"github.com/netcore-go/pkg/http3"
+	"github.com/phuhao00/netcore-go/pkg/http2"
+	"github.com/phuhao00/netcore-go/pkg/http3"
 )
 
 // ProtocolType 协议类型

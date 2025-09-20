@@ -13,7 +13,7 @@ import (
 
 	"github.com/xtaci/kcp-go/v5"
 
-	"github.com/netcore-go/pkg/core"
+	"github.com/phuhao00/netcore-go/pkg/core"
 )
 
 // KCPServer KCP服务器实现

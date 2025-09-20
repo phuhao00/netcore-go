@@ -17,7 +17,7 @@ import (
 	v3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 
-	"github.com/netcore-go/pkg/discovery"
+	"github.com/phuhao00/netcore-go/pkg/discovery"
 )
 
 // EtcdDiscovery etcd服务发现

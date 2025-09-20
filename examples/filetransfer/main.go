@@ -14,49 +14,48 @@ import (
 	"sync"
 	"time"
 
-	"github.com/netcore-go"
-	"github.com/netcore-go/pkg/core"
-	"github.com/netcore-go/pkg/pool"
+	"github.com/phuhao00/netcore-go"
+	"github.com/phuhao00/netcore-go/pkg/core"
 )
 
 // FileTransferMessage 文件传输消息
 type FileTransferMessage struct {
-	Type      string      `json:"type"`
-	FileID    string      `json:"file_id"`
-	Filename  string      `json:"filename"`
-	FileSize  int64       `json:"file_size"`
-	ChunkSize int         `json:"chunk_size"`
-	ChunkID   int         `json:"chunk_id"`
-	TotalChunks int       `json:"total_chunks"`
-	Data      []byte      `json:"data,omitempty"`
-	Checksum  string      `json:"checksum"`
-	Metadata  interface{} `json:"metadata,omitempty"`
-	Timestamp int64       `json:"timestamp"`
+	Type        string      `json:"type"`
+	FileID      string      `json:"file_id"`
+	Filename    string      `json:"filename"`
+	FileSize    int64       `json:"file_size"`
+	ChunkSize   int         `json:"chunk_size"`
+	ChunkID     int         `json:"chunk_id"`
+	TotalChunks int         `json:"total_chunks"`
+	Data        []byte      `json:"data,omitempty"`
+	Checksum    string      `json:"checksum"`
+	Metadata    interface{} `json:"metadata,omitempty"`
+	Timestamp   int64       `json:"timestamp"`
 }
 
 // FileInfo 文件信息
 type FileInfo struct {
-	ID          string    `json:"id"`
-	Filename    string    `json:"filename"`
-	Size        int64     `json:"size"`
-	Checksum    string    `json:"checksum"`
-	ChunkSize   int       `json:"chunk_size"`
-	TotalChunks int       `json:"total_chunks"`
-	UploadedChunks []bool `json:"uploaded_chunks"`
-	Progress    float64   `json:"progress"`
-	Status      string    `json:"status"` // uploading, completed, failed, paused
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	FilePath    string    `json:"file_path"`
+	ID             string    `json:"id"`
+	Filename       string    `json:"filename"`
+	Size           int64     `json:"size"`
+	Checksum       string    `json:"checksum"`
+	ChunkSize      int       `json:"chunk_size"`
+	TotalChunks    int       `json:"total_chunks"`
+	UploadedChunks []bool    `json:"uploaded_chunks"`
+	Progress       float64   `json:"progress"`
+	Status         string    `json:"status"` // uploading, completed, failed, paused
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+	FilePath       string    `json:"file_path"`
 }
 
 // Client 客户端信息
 type Client struct {
-	ID       string          `json:"id"`
-	Conn     core.Connection `json:"-"`
+	ID       string               `json:"id"`
+	Conn     core.Connection      `json:"-"`
 	Files    map[string]*FileInfo `json:"files"`
-	LastSeen time.Time       `json:"last_seen"`
-	mu       sync.RWMutex    `json:"-"`
+	LastSeen time.Time            `json:"last_seen"`
+	mu       sync.RWMutex         `json:"-"`
 }
 
 // FileTransferServer 文件传输服务器
@@ -66,27 +65,46 @@ type FileTransferServer struct {
 	downloadDir string
 	files       map[string]*FileInfo
 	clients     map[string]*Client
-	pool        pool.ConnectionPool
 	stats       *TransferStats
 	mu          sync.RWMutex
 }
 
 // TransferStats 传输统计
 type TransferStats struct {
-	TotalFiles      int64 `json:"total_files"`
-	CompletedFiles  int64 `json:"completed_files"`
-	TotalBytes      int64 `json:"total_bytes"`
+	TotalFiles       int64 `json:"total_files"`
+	CompletedFiles   int64 `json:"completed_files"`
+	TotalBytes       int64 `json:"total_bytes"`
 	TransferredBytes int64 `json:"transferred_bytes"`
-	ActiveTransfers int64 `json:"active_transfers"`
-	TransferRate    int64 `json:"transfer_rate"` // bytes per second
-	LastUpdateTime  int64 `json:"last_update_time"`
-	mu              sync.RWMutex
+	ActiveTransfers  int64 `json:"active_transfers"`
+	TransferRate     int64 `json:"transfer_rate"` // bytes per second
+	LastUpdateTime   int64 `json:"last_update_time"`
+	mu               sync.RWMutex
 }
 
 const (
-	DefaultChunkSize = 64 * 1024 // 64KB
+	DefaultChunkSize = 64 * 1024          // 64KB
 	MaxFileSize      = 1024 * 1024 * 1024 // 1GB
 )
+
+// FileTransferHandler 文件传输处理器
+type FileTransferHandler struct {
+	server *FileTransferServer
+}
+
+// OnConnect 处理连接建立
+func (h *FileTransferHandler) OnConnect(conn core.Connection) {
+	h.server.handleConnect(conn)
+}
+
+// OnMessage 处理消息
+func (h *FileTransferHandler) OnMessage(conn core.Connection, msg core.Message) {
+	h.server.handleMessage(conn, msg.Data)
+}
+
+// OnDisconnect 处理连接断开
+func (h *FileTransferHandler) OnDisconnect(conn core.Connection, err error) {
+	h.server.handleDisconnect(conn)
+}
 
 // NewFileTransferServer 创建文件传输服务器
 func NewFileTransferServer(uploadDir, downloadDir string) *FileTransferServer {
@@ -102,30 +120,19 @@ func NewFileTransferServer(uploadDir, downloadDir string) *FileTransferServer {
 	os.MkdirAll(uploadDir, 0755)
 	os.MkdirAll(downloadDir, 0755)
 
-	// 创建连接池
-	fs.pool = pool.NewConnectionPool(&pool.Config{
-		MinSize:     5,
-		MaxSize:     100,
-		IdleTimeout: time.Minute * 10,
-		ConnTimeout: time.Second * 30,
-	})
+
 
 	return fs
 }
 
 // Start 启动文件传输服务器
 func (fs *FileTransferServer) Start(addr string) error {
-	config := &netcore.Config{
-		Host: "localhost",
-		Port: 8080,
-	}
-
-	fs.server = netcore.NewServer(config)
+	// 使用默认配置创建服务器
+	fs.server = netcore.NewTCPServer()
 
 	// 设置处理器
-	// fs.server.SetMessageHandler(fs.handleMessage)
-	// fs.server.SetConnectHandler(fs.handleConnect)
-	// fs.server.SetDisconnectHandler(fs.handleDisconnect)
+	handler := &FileTransferHandler{server: fs}
+	fs.server.SetHandler(handler)
 
 	// 启动统计更新
 	go fs.updateStats()
@@ -145,8 +152,7 @@ func (fs *FileTransferServer) handleConnect(conn core.Connection) {
 	clientID := fmt.Sprintf("client_%d", time.Now().UnixNano())
 	log.Printf("新客户端连接: %s (%s)", clientID, conn.RemoteAddr())
 
-	// 添加到连接池
-	// fs.pool.AddConnection(conn) // 暂时注释掉，因为类型不匹配
+
 
 	// 创建客户端
 	client := &Client{
@@ -162,10 +168,10 @@ func (fs *FileTransferServer) handleConnect(conn core.Connection) {
 
 	// 发送欢迎消息
 	welcomeMsg := &FileTransferMessage{
-		Type:      "welcome",
+		Type: "welcome",
 		Metadata: map[string]interface{}{
-			"client_id":        clientID,
-			"max_file_size":    MaxFileSize,
+			"client_id":          clientID,
+			"max_file_size":      MaxFileSize,
 			"default_chunk_size": DefaultChunkSize,
 			"supported_commands": []string{"upload", "download", "list", "delete", "pause", "resume"},
 		},
@@ -179,8 +185,7 @@ func (fs *FileTransferServer) handleConnect(conn core.Connection) {
 func (fs *FileTransferServer) handleDisconnect(conn core.Connection) {
 	log.Printf("客户端断开连接: %s", conn.RemoteAddr())
 
-	// 从连接池移除
-	// fs.pool.RemoveConnection(conn) // 暂时注释掉，因为类型不匹配
+
 
 	// 查找并移除客户端
 	fs.mu.Lock()
@@ -408,7 +413,7 @@ func (fs *FileTransferServer) handleUploadChunk(conn core.Connection, msg *FileT
 	// 发送确认
 	fs.sendChunkAck(conn, msg.FileID, msg.ChunkID, false)
 
-	log.Printf("接收分块 %d/%d (文件: %s, 进度: %.2f%%)", 
+	log.Printf("接收分块 %d/%d (文件: %s, 进度: %.2f%%)",
 		msg.ChunkID+1, fileInfo.TotalChunks, fileInfo.Filename, fileInfo.Progress)
 }
 
@@ -657,8 +662,8 @@ func (fs *FileTransferServer) handleResumeTransfer(conn core.Connection, msg *Fi
 	fileInfo.UpdatedAt = time.Now()
 
 	response := &FileTransferMessage{
-		Type:      "transfer_resumed",
-		FileID:    msg.FileID,
+		Type:   "transfer_resumed",
+		FileID: msg.FileID,
 		Metadata: map[string]interface{}{
 			"uploaded_chunks": fileInfo.UploadedChunks,
 			"progress":        fileInfo.Progress,
@@ -804,7 +809,7 @@ func (fs *FileTransferServer) updateStats() {
 		fs.stats.LastUpdateTime = time.Now().Unix()
 		fs.stats.mu.Unlock()
 
-		log.Printf("传输统计 - 文件: %d/%d, 活跃传输: %d, 传输速率: %d B/s", 
+		log.Printf("传输统计 - 文件: %d/%d, 活跃传输: %d, 传输速率: %d B/s",
 			completedFiles, totalFiles, activeTransfers, transferRate)
 	}
 }
@@ -859,10 +864,6 @@ func (fs *FileTransferServer) GetStats() *TransferStats {
 
 // Stop 停止文件传输服务器
 func (fs *FileTransferServer) Stop() error {
-	// if fs.pool != nil {
-	// 	fs.pool.Close()
-	// }
-
 	if fs.server != nil {
 		return fs.server.Stop()
 	}
@@ -932,5 +933,3 @@ func main() {
 		log.Fatalf("启动文件传输服务器失败: %v", err)
 	}
 }
-
-

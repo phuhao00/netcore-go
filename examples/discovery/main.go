@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/netcore-go/pkg/discovery"
-	"github.com/netcore-go/pkg/discovery/consul"
-	"github.com/netcore-go/pkg/discovery/etcd"
+	"github.com/phuhao00/netcore-go/pkg/discovery"
+	"github.com/phuhao00/netcore-go/pkg/discovery/consul"
+	"github.com/phuhao00/netcore-go/pkg/discovery/etcd"
 )
 
 func main() {

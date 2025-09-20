@@ -17,8 +17,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/netcore-go/pkg/core"
-	"github.com/netcore-go"
+	"github.com/phuhao00/netcore-go"
+	"github.com/phuhao00/netcore-go/pkg/core"
 )
 
 // BenchmarkConfig 基准测试配置
@@ -338,7 +338,7 @@ func (r *BenchmarkRunner) Run(ctx context.Context) error {
 		}
 
 		r.results = append(r.results, result)
-		log.Printf("%s benchmark completed: %.2f msg/s, %.2f ms avg latency", 
+		log.Printf("%s benchmark completed: %.2f msg/s, %.2f ms avg latency",
 			protocol, result.Throughput, result.AverageLatency)
 	}
 
@@ -448,7 +448,7 @@ func calculatePercentile(latencies []float64, percentile float64) float64 {
 	// 简化实现，实际应该排序后计算
 	sorted := make([]float64, len(latencies))
 	copy(sorted, latencies)
-	
+
 	// 这里应该实现排序算法，简化为返回平均值
 	var sum float64
 	for _, latency := range sorted {

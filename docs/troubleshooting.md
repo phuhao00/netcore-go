@@ -21,8 +21,8 @@
 
 **症状：**
 ```bash
-go get github.com/netcore-go
-# go: module github.com/netcore-go: not found
+go get github.com/phuhao00/netcore-go
+# go: module github.com/phuhao00/netcore-go: not found
 ```
 
 **解决方案：**

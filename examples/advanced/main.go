@@ -10,31 +10,31 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/netcore-go/pkg/alert"
-	"github.com/netcore-go/pkg/core"
-	"github.com/netcore-go/pkg/health"
-	"github.com/netcore-go/pkg/loadbalancer"
-	"github.com/netcore-go/pkg/logger"
-	"github.com/netcore-go/pkg/performance"
-	"github.com/netcore-go/pkg/security"
-	"github.com/netcore-go/pkg/tracing"
+	"github.com/phuhao00/netcore-go/pkg/alert"
+	"github.com/phuhao00/netcore-go/pkg/core"
+	"github.com/phuhao00/netcore-go/pkg/health"
+	"github.com/phuhao00/netcore-go/pkg/loadbalancer"
+	"github.com/phuhao00/netcore-go/pkg/logger"
+	"github.com/phuhao00/netcore-go/pkg/performance"
+	"github.com/phuhao00/netcore-go/pkg/security"
+	"github.com/phuhao00/netcore-go/pkg/tracing"
 )
 
 // AdvancedServer 高级服务器示例
 type AdvancedServer struct {
-	server           *core.BaseServer
-	logger           *logger.Logger
-	healthChecker    *health.ConcreteHealthChecker
-	alertEngine      *alert.AlertEngine
-	tracerProvider   tracing.TracerProvider
-	loadBalancer     *loadbalancer.SmartLoadBalancer
-	connectionPool   *performance.ConnectionPool
-	memoryManager    *performance.MemoryManager
-	zeroCopyManager  *performance.ZeroCopyManager
-	tlsManager       *security.TLSManager
-	authManager      *security.AuthManager
-	auditLogger      security.AuditLogger
-	ddosProtector    *security.DDoSProtector
+	server          *core.BaseServer
+	logger          *logger.Logger
+	healthChecker   *health.ConcreteHealthChecker
+	alertEngine     *alert.AlertEngine
+	tracerProvider  tracing.TracerProvider
+	loadBalancer    *loadbalancer.SmartLoadBalancer
+	connectionPool  *performance.ConnectionPool
+	memoryManager   *performance.MemoryManager
+	zeroCopyManager *performance.ZeroCopyManager
+	tlsManager      *security.TLSManager
+	authManager     *security.AuthManager
+	auditLogger     security.AuditLogger
+	ddosProtector   *security.DDoSProtector
 }
 
 // NewAdvancedServer 创建高级服务器
@@ -135,8 +135,8 @@ func NewAdvancedServer() *AdvancedServer {
 		zeroCopyManager: zeroCopyManager,
 		tlsManager:      tlsManager,
 		// authManager:     authManager,
-		auditLogger:     auditLogger,
-		ddosProtector:   ddosProtector,
+		auditLogger:   auditLogger,
+		ddosProtector: ddosProtector,
 	}
 }
 
@@ -336,7 +336,7 @@ func (as *AdvancedServer) auditMiddleware(next http.Handler) http.Handler {
 
 		// 记录响应时间
 		duration := time.Since(start)
-		as.logger.Info(fmt.Sprintf("Request processed: %s %s in %v from %s", 
+		as.logger.Info(fmt.Sprintf("Request processed: %s %s in %v from %s",
 			r.Method, r.URL.Path, duration, r.RemoteAddr))
 	})
 }

@@ -13,7 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/netcore-go/pkg/core"
+	"github.com/phuhao00/netcore-go/pkg/core"
 )
 
 // ReconnectStrategy 重连策略

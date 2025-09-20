@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/netcore-go/pkg/http3"
+	"github.com/phuhao00/netcore-go/pkg/http3"
 )
 
 func main() {

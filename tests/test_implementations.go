@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/netcore-go/pkg/rpc"
+	"github.com/phuhao00/netcore-go/pkg/rpc"
 )
 
 func main() {

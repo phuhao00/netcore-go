@@ -6,7 +6,7 @@ package integration
 
 import (
 	"bytes"
-	"context"
+
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -15,14 +15,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/netcore-go/pkg/core"
-	"github.com/netcore-go/pkg/testing"
+	"github.com/phuhao00/netcore-go/pkg/core"
+	netcoretesting "github.com/phuhao00/netcore-go/pkg/testing"
 )
 
 // TestServerIntegration 服务器集成测试
 func TestServerIntegration(t *testing.T) {
 	// 创建集成测试套件
-	suite := testing.NewIntegrationTestSuite("ServerIntegration")
+	suite := netcoretesting.NewIntegrationTestSuite("ServerIntegration")
 	
 	// 设置测试环境
 	if err := suite.SetUp(); err != nil {
@@ -436,7 +436,7 @@ func testConcurrency(t *testing.T, baseURL string) {
 // TestDatabaseIntegration 数据库集成测试
 func TestDatabaseIntegration(t *testing.T) {
 	// 创建集成测试套件
-	suite := testing.NewIntegrationTestSuite("DatabaseIntegration")
+	suite := netcoretesting.NewIntegrationTestSuite("DatabaseIntegration")
 	
 	// 设置测试环境
 	if err := suite.SetUp(); err != nil {
@@ -445,7 +445,7 @@ func TestDatabaseIntegration(t *testing.T) {
 	defer suite.TearDown()
 	
 	// 添加模拟数据库
-	mockDB := testing.NewMockDatabase()
+	mockDB := netcoretesting.NewMockDatabase()
 	suite.AddMockDatabase("primary", mockDB)
 	
 	// 测试数据库操作
@@ -459,7 +459,7 @@ func TestDatabaseIntegration(t *testing.T) {
 }
 
 // testDatabaseCRUD 测试数据库CRUD操作
-func testDatabaseCRUD(t *testing.T, db *testing.MockDatabase) {
+func testDatabaseCRUD(t *testing.T, db *netcoretesting.MockDatabase) {
 	// Create
 	db.Set("user:1", map[string]interface{}{
 		"id":   1,
@@ -501,7 +501,7 @@ func testDatabaseCRUD(t *testing.T, db *testing.MockDatabase) {
 }
 
 // testDatabaseConcurrency 测试数据库并发访问
-func testDatabaseConcurrency(t *testing.T, db *testing.MockDatabase) {
+func testDatabaseConcurrency(t *testing.T, db *netcoretesting.MockDatabase) {
 	concurrency := 10
 	operations := 100
 	
@@ -568,7 +568,7 @@ func testDatabaseConcurrency(t *testing.T, db *testing.MockDatabase) {
 // TestCacheIntegration 缓存集成测试
 func TestCacheIntegration(t *testing.T) {
 	// 创建集成测试套件
-	suite := testing.NewIntegrationTestSuite("CacheIntegration")
+	suite := netcoretesting.NewIntegrationTestSuite("CacheIntegration")
 	
 	// 设置测试环境
 	if err := suite.SetUp(); err != nil {
@@ -577,7 +577,7 @@ func TestCacheIntegration(t *testing.T) {
 	defer suite.TearDown()
 	
 	// 添加模拟缓存
-	mockCache := testing.NewMockCache()
+	mockCache := netcoretesting.NewMockCache()
 	suite.AddMockCache("redis", mockCache)
 	
 	// 测试缓存操作
@@ -595,7 +595,7 @@ func TestCacheIntegration(t *testing.T) {
 }
 
 // testCacheBasicOperations 测试缓存基本操作
-func testCacheBasicOperations(t *testing.T, cache *testing.MockCache) {
+func testCacheBasicOperations(t *testing.T, cache *netcoretesting.MockCache) {
 	// Set and Get
 	cache.Set("key1", "value1", time.Hour)
 	value, exists := cache.Get("key1")
@@ -621,7 +621,7 @@ func testCacheBasicOperations(t *testing.T, cache *testing.MockCache) {
 }
 
 // testCacheTTL 测试缓存TTL
-func testCacheTTL(t *testing.T, cache *testing.MockCache) {
+func testCacheTTL(t *testing.T, cache *netcoretesting.MockCache) {
 	// Set with short TTL
 	cache.Set("ttl_key", "ttl_value", 100*time.Millisecond)
 	
@@ -642,7 +642,7 @@ func testCacheTTL(t *testing.T, cache *testing.MockCache) {
 }
 
 // testCacheConcurrency 测试缓存并发访问
-func testCacheConcurrency(t *testing.T, cache *testing.MockCache) {
+func testCacheConcurrency(t *testing.T, cache *netcoretesting.MockCache) {
 	concurrency := 10
 	operations := 50
 	
@@ -708,7 +708,7 @@ func TestLoadTest(t *testing.T) {
 	defer testServer.Close()
 	
 	// 配置负载测试
-	config := &testing.LoadTestConfig{
+	config := &netcoretesting.LoadTestConfig{
 		Concurrency: 5,
 		Duration:    10 * time.Second,
 		TargetURL:   testServer.URL + "/health",
@@ -716,7 +716,7 @@ func TestLoadTest(t *testing.T) {
 	}
 	
 	// 运行负载测试
-	loadTester := testing.NewLoadTester(config)
+	loadTester := netcoretesting.NewLoadTester(config)
 	result, err := loadTester.Run()
 	if err != nil {
 		t.Fatalf("Load test failed: %v", err)

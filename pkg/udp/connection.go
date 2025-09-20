@@ -1,4 +1,4 @@
-﻿// Package udp UDP连接实现
+// Package udp UDP连接实现
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/netcore-go/pkg/core"
+	"github.com/phuhao00/netcore-go/pkg/core"
 )
 
 // UDPConnection UDP伪连接实现

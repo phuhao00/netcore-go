@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/netcore-go/pkg/config"
-	"github.com/netcore-go/pkg/logger"
-	"github.com/netcore-go/pkg/metrics"
+	"github.com/phuhao00/netcore-go/pkg/config"
+	"github.com/phuhao00/netcore-go/pkg/logger"
+	"github.com/phuhao00/netcore-go/pkg/metrics"
 )
 
 // Message 消息结构
@@ -29,10 +29,10 @@ type Message struct {
 
 // MessageType 消息类型常量
 const (
-	MsgTypeJoin    = "join"
-	MsgTypeLeave   = "leave"
-	MsgTypeChat    = "chat"
-	MsgTypeSystem  = "system"
+	MsgTypeJoin     = "join"
+	MsgTypeLeave    = "leave"
+	MsgTypeChat     = "chat"
+	MsgTypeSystem   = "system"
 	MsgTypeUserList = "user_list"
 )
 
@@ -65,7 +65,7 @@ func (c *Client) ReadPump() {
 		c.Hub.Unregister <- c
 		c.Conn.Close()
 	}()
-	
+
 	// 设置读取参数
 	c.Conn.SetReadLimit(512)
 	c.Conn.SetReadDeadline(time.Now().Add(60 * time.Second))
@@ -73,7 +73,7 @@ func (c *Client) ReadPump() {
 		c.Conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 		return nil
 	})
-	
+
 	for {
 		var msg Message
 		err := c.Conn.ReadJSON(&msg)
@@ -83,13 +83,13 @@ func (c *Client) ReadPump() {
 			}
 			break
 		}
-		
+
 		// 设置消息元数据
 		msg.UserID = c.ID
 		msg.Username = c.Username
 		msg.RoomID = c.RoomID
 		msg.Timestamp = time.Now()
-		
+
 		// 发送到Hub处理
 		c.Hub.Broadcast <- &msg
 	}
@@ -102,7 +102,7 @@ func (c *Client) WritePump() {
 		ticker.Stop()
 		c.Conn.Close()
 	}()
-	
+
 	for {
 		select {
 		case message, ok := <-c.Send:
@@ -111,12 +111,12 @@ func (c *Client) WritePump() {
 				c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
-			
+
 			if err := c.Conn.WriteJSON(message); err != nil {
 				logger.WithError(err).Error("WebSocket写入错误")
 				return
 			}
-			
+
 		case <-ticker.C:
 			c.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			if err := c.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
@@ -164,7 +164,7 @@ func (r *Room) RemoveClient(client *Client) {
 func (r *Room) GetClients() []*Client {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	clients := make([]*Client, 0, len(r.Clients))
 	for client := range r.Clients {
 		clients = append(clients, client)
@@ -176,7 +176,7 @@ func (r *Room) GetClients() []*Client {
 func (r *Room) GetUserList() []string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	usernames := make([]string, 0, len(r.Clients))
 	for client := range r.Clients {
 		usernames = append(usernames, client.Username)
@@ -192,7 +192,7 @@ type Hub struct {
 	Unregister chan *Client
 	Broadcast  chan *Message
 	mu         sync.RWMutex
-	
+
 	// 指标
 	connectedClients *metrics.Gauge
 	messageCounter   *metrics.Counter
@@ -207,7 +207,7 @@ func NewHub() *Hub {
 		Register:   make(chan *Client),
 		Unregister: make(chan *Client),
 		Broadcast:  make(chan *Message),
-		
+
 		// 初始化指标
 		connectedClients: metrics.RegisterGauge(
 			"chatroom_connected_clients",
@@ -233,10 +233,10 @@ func (h *Hub) Run() {
 		select {
 		case client := <-h.Register:
 			h.handleClientRegister(client)
-			
+
 		case client := <-h.Unregister:
 			h.handleClientUnregister(client)
-			
+
 		case message := <-h.Broadcast:
 			h.handleMessage(message)
 		}
@@ -247,24 +247,24 @@ func (h *Hub) Run() {
 func (h *Hub) handleClientRegister(client *Client) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	
+
 	// 添加客户端
 	h.Clients[client] = true
-	
+
 	// 获取或创建房间
 	room, exists := h.Rooms[client.RoomID]
 	if !exists {
 		room = NewRoom(client.RoomID, fmt.Sprintf("Room %s", client.RoomID))
 		h.Rooms[client.RoomID] = room
 	}
-	
+
 	// 添加到房间
 	room.AddClient(client)
-	
+
 	// 更新指标
 	h.connectedClients.Set(float64(len(h.Clients)))
 	h.roomCounter.Set(float64(len(h.Rooms)))
-	
+
 	// 发送加入消息
 	joinMsg := &Message{
 		Type:      MsgTypeSystem,
@@ -272,9 +272,9 @@ func (h *Hub) handleClientRegister(client *Client) {
 		RoomID:    client.RoomID,
 		Timestamp: time.Now(),
 	}
-	
+
 	h.broadcastToRoom(client.RoomID, joinMsg)
-	
+
 	// 发送用户列表
 	userListMsg := &Message{
 		Type:      MsgTypeUserList,
@@ -282,9 +282,9 @@ func (h *Hub) handleClientRegister(client *Client) {
 		RoomID:    client.RoomID,
 		Timestamp: time.Now(),
 	}
-	
+
 	h.broadcastToRoom(client.RoomID, userListMsg)
-	
+
 	logger.WithFields(map[string]interface{}{
 		"client_id": client.ID,
 		"username":  client.Username,
@@ -296,15 +296,15 @@ func (h *Hub) handleClientRegister(client *Client) {
 func (h *Hub) handleClientUnregister(client *Client) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	
+
 	if _, ok := h.Clients[client]; ok {
 		// 从客户端列表移除
 		delete(h.Clients, client)
-		
+
 		// 从房间移除
 		if room, exists := h.Rooms[client.RoomID]; exists {
 			room.RemoveClient(client)
-			
+
 			// 如果房间为空，删除房间
 			if len(room.Clients) == 0 {
 				delete(h.Rooms, client.RoomID)
@@ -316,9 +316,9 @@ func (h *Hub) handleClientUnregister(client *Client) {
 					RoomID:    client.RoomID,
 					Timestamp: time.Now(),
 				}
-				
+
 				h.broadcastToRoom(client.RoomID, leaveMsg)
-				
+
 				// 更新用户列表
 				userListMsg := &Message{
 					Type:      MsgTypeUserList,
@@ -326,15 +326,15 @@ func (h *Hub) handleClientUnregister(client *Client) {
 					RoomID:    client.RoomID,
 					Timestamp: time.Now(),
 				}
-				
+
 				h.broadcastToRoom(client.RoomID, userListMsg)
 			}
 		}
-		
+
 		// 更新指标
 		h.connectedClients.Set(float64(len(h.Clients)))
 		h.roomCounter.Set(float64(len(h.Rooms)))
-		
+
 		logger.WithFields(map[string]interface{}{
 			"client_id": client.ID,
 			"username":  client.Username,
@@ -347,7 +347,7 @@ func (h *Hub) handleClientUnregister(client *Client) {
 func (h *Hub) handleMessage(message *Message) {
 	// 更新消息计数
 	h.messageCounter.Inc()
-	
+
 	// 记录消息日志
 	logger.WithFields(map[string]interface{}{
 		"type":     message.Type,
@@ -356,7 +356,7 @@ func (h *Hub) handleMessage(message *Message) {
 		"room_id":  message.RoomID,
 		"content":  message.Content,
 	}).Info("收到消息")
-	
+
 	// 广播到房间
 	h.broadcastToRoom(message.RoomID, message)
 }
@@ -367,7 +367,7 @@ func (h *Hub) broadcastToRoom(roomID string, message *Message) {
 	if !exists {
 		return
 	}
-	
+
 	for client := range room.Clients {
 		select {
 		case client.Send <- message:
@@ -383,7 +383,7 @@ func (h *Hub) broadcastToRoom(roomID string, message *Message) {
 func (h *Hub) GetStats() map[string]interface{} {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	
+
 	return map[string]interface{}{
 		"connected_clients": len(h.Clients),
 		"active_rooms":      len(h.Rooms),
@@ -417,7 +417,7 @@ func NewChatServer(config *ServerConfig) *ChatServer {
 			AllowOrigins: "*",
 		}
 	}
-	
+
 	return &ChatServer{
 		hub:    NewHub(),
 		config: config,
@@ -433,30 +433,30 @@ func NewChatServer(config *ServerConfig) *ChatServer {
 func (s *ChatServer) Start() error {
 	// 启动Hub
 	go s.hub.Run()
-	
+
 	// 设置路由
 	mux := http.NewServeMux()
-	
+
 	// WebSocket端点
 	mux.HandleFunc("/ws", s.handleWebSocket)
-	
+
 	// API端点
 	mux.HandleFunc("/api/stats", s.handleStats)
 	mux.HandleFunc("/api/rooms", s.handleRooms)
-	
+
 	// 静态文件
 	mux.Handle("/", http.FileServer(http.Dir(s.config.StaticDir)))
-	
+
 	// 指标端点
 	mux.Handle("/metrics", metrics.PrometheusHandler(nil))
-	
+
 	// 创建服务器
 	addr := fmt.Sprintf("%s:%d", s.config.Host, s.config.Port)
 	s.server = &http.Server{
 		Addr:    addr,
 		Handler: mux,
 	}
-	
+
 	logger.Infof("聊天服务器启动在 %s", addr)
 	return s.server.ListenAndServe()
 }
@@ -465,7 +465,7 @@ func (s *ChatServer) Start() error {
 func (s *ChatServer) Stop() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	
+
 	return s.server.Shutdown(ctx)
 }
 
@@ -475,25 +475,25 @@ func (s *ChatServer) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	userID := r.URL.Query().Get("user_id")
 	username := r.URL.Query().Get("username")
 	roomID := r.URL.Query().Get("room_id")
-	
+
 	if userID == "" || username == "" || roomID == "" {
 		http.Error(w, "Missing required parameters", http.StatusBadRequest)
 		return
 	}
-	
+
 	// 升级到WebSocket
 	conn, err := s.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		logger.WithError(err).Error("WebSocket升级失败")
 		return
 	}
-	
+
 	// 创建客户端
 	client := NewClient(userID, username, roomID, conn, s.hub)
-	
+
 	// 注册客户端
 	s.hub.Register <- client
-	
+
 	// 启动读写协程
 	go client.WritePump()
 	go client.ReadPump()
@@ -502,7 +502,7 @@ func (s *ChatServer) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 // handleStats 处理统计信息请求
 func (s *ChatServer) handleStats(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	stats := s.hub.GetStats()
 	json.NewEncoder(w).Encode(stats)
 }
@@ -510,19 +510,19 @@ func (s *ChatServer) handleStats(w http.ResponseWriter, r *http.Request) {
 // handleRooms 处理房间列表请求
 func (s *ChatServer) handleRooms(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	s.hub.mu.RLock()
 	rooms := make([]map[string]interface{}, 0, len(s.hub.Rooms))
 	for _, room := range s.hub.Rooms {
 		rooms = append(rooms, map[string]interface{}{
-			"id":          room.ID,
-			"name":        room.Name,
+			"id":           room.ID,
+			"name":         room.Name,
 			"client_count": len(room.Clients),
-			"users":       room.GetUserList(),
+			"users":        room.GetUserList(),
 		})
 	}
 	s.hub.mu.RUnlock()
-	
+
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"rooms": rooms,
 	})
@@ -535,13 +535,13 @@ func main() {
 		Formatter: "json",
 		Output:    "console",
 	}))
-	
+
 	// 加载配置
 	cfg, err := config.AutoLoadConfig()
 	if err != nil {
 		logger.WithError(err).Warn("加载配置失败，使用默认配置")
 	}
-	
+
 	// 解析服务器配置
 	var serverConfig ServerConfig
 	if cfg != nil {
@@ -562,7 +562,7 @@ func main() {
 			AllowOrigins: "*",
 		}
 	}
-	
+
 	// 启动系统指标收集
 	metrics.StartSystemCollector(&metrics.SystemCollectorConfig{
 		Enabled:         true,
@@ -570,7 +570,7 @@ func main() {
 		Namespace:       "chatroom",
 	})
 	defer metrics.StopSystemCollector()
-	
+
 	// 启动Prometheus导出器
 	go func() {
 		if err := metrics.StartPrometheusExporter(":9090"); err != nil {
@@ -578,29 +578,29 @@ func main() {
 		}
 	}()
 	defer metrics.StopPrometheusExporter()
-	
+
 	// 创建聊天服务器
 	server := NewChatServer(&serverConfig)
-	
+
 	// 启动服务器
 	go func() {
 		if err := server.Start(); err != nil && err != http.ErrServerClosed {
 			logger.WithError(err).Fatal("服务器启动失败")
 		}
 	}()
-	
+
 	logger.Info("聊天室服务器已启动")
 	logger.Infof("WebSocket端点: ws://%s:%d/ws", serverConfig.Host, serverConfig.Port)
 	logger.Infof("Web界面: http://%s:%d", serverConfig.Host, serverConfig.Port)
 	logger.Info("指标端点: http://localhost:9090/metrics")
-	
+
 	// 等待中断信号
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	<-sigChan
-	
+
 	logger.Info("正在关闭服务器...")
-	
+
 	// 优雅关闭
 	if err := server.Stop(); err != nil {
 		logger.WithError(err).Error("服务器关闭失败")

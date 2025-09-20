@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/netcore-go/pkg/discovery"
+	"github.com/phuhao00/netcore-go/pkg/discovery"
 )
 
 // LoadBalancer 负载均衡器接口

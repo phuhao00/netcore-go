@@ -57,7 +57,7 @@ NetCore-Go v1.0.1 is a stability release that fixes all compilation errors and b
 ## 📦 Installation
 
 ```bash
-go get github.com/netcore-go@v1.0.1
+go get github.com/phuhao00/netcore-go@v1.0.1
 ```
 
 ## 🔄 Migration from v1.0.0
@@ -66,7 +66,7 @@ This is a patch release with no breaking changes. Simply update your dependency:
 
 ```bash
 go mod tidy
-go get github.com/netcore-go@v1.0.1
+go get github.com/phuhao00/netcore-go@v1.0.1
 ```
 
 ## 🧪 Testing

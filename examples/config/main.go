@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/netcore-go/pkg/config"
+	"github.com/phuhao00/netcore-go/pkg/config"
 )
 
 // AppConfig 应用配置结构体
@@ -65,31 +65,31 @@ func (w *ConfigWatcher) OnConfigChange(key string, oldValue, newValue interface{
 
 func main() {
 	fmt.Println("=== NetCore-Go 配置管理系统示例 ===")
-	
+
 	// 示例1: 基本配置加载
 	fmt.Println("\n1. 基本配置加载示例")
 	basicConfigExample()
-	
+
 	// 示例2: 配置构建器
 	fmt.Println("\n2. 配置构建器示例")
 	configBuilderExample()
-	
+
 	// 示例3: 环境变量配置
 	fmt.Println("\n3. 环境变量配置示例")
 	envConfigExample()
-	
+
 	// 示例4: 配置档案管理
 	fmt.Println("\n4. 配置档案管理示例")
 	profileConfigExample()
-	
+
 	// 示例5: 配置监听器
 	fmt.Println("\n5. 配置监听器示例")
 	configWatcherExample()
-	
+
 	// 示例6: 结构体映射
 	fmt.Println("\n6. 结构体映射示例")
 	structMappingExample()
-	
+
 	// 示例7: 配置合并
 	fmt.Println("\n7. 配置合并示例")
 	configMergeExample()
@@ -99,26 +99,26 @@ func main() {
 func basicConfigExample() {
 	// 创建示例配置文件
 	createExampleConfigFiles()
-	
+
 	// 加载JSON配置
 	jsonConfig := config.NewConfig(&config.ConfigOptions{
 		Format:   config.FormatJSON,
 		FilePath: "example.json",
 	})
-	
+
 	if err := jsonConfig.LoadFromFile("example.json"); err != nil {
 		log.Printf("加载JSON配置失败: %v", err)
 	} else {
 		fmt.Printf("JSON配置 - 服务器端口: %d\n", jsonConfig.GetInt("server.port"))
 		fmt.Printf("JSON配置 - 调试模式: %v\n", jsonConfig.GetBool("debug"))
 	}
-	
+
 	// 加载YAML配置
 	yamlConfig := config.NewConfig(&config.ConfigOptions{
 		Format:   config.FormatYAML,
 		FilePath: "example.yaml",
 	})
-	
+
 	if err := yamlConfig.LoadFromFile("example.yaml"); err != nil {
 		log.Printf("加载YAML配置失败: %v", err)
 	} else {
@@ -135,20 +135,20 @@ func configBuilderExample() {
 		"server.read_timeout": "30s",
 		"debug":               true,
 	}
-	
+
 	config, err := config.NewBuilder().
 		WithDefaults(defaults).
 		WithFile("example.yaml").
 		WithEnv("APP").
 		Build()
-	
+
 	if err != nil {
 		log.Printf("构建配置失败: %v", err)
 		return
 	}
-	
-	fmt.Printf("构建器配置 - 服务器地址: %s:%d\n", 
-		config.GetString("server.host"), 
+
+	fmt.Printf("构建器配置 - 服务器地址: %s:%d\n",
+		config.GetString("server.host"),
 		config.GetInt("server.port"))
 	fmt.Printf("构建器配置 - 所有配置: %+v\n", config.GetAll())
 }
@@ -160,16 +160,16 @@ func envConfigExample() {
 	os.Setenv("APP_SERVER_PORT", "9090")
 	os.Setenv("APP_DEBUG", "false")
 	os.Setenv("APP_DATABASE_HOST", "db.example.com")
-	
+
 	envConfig := config.NewConfig(&config.ConfigOptions{
 		Format: config.FormatENV,
 	})
-	
+
 	if err := envConfig.LoadFromEnv("APP"); err != nil {
 		log.Printf("加载环境变量配置失败: %v", err)
 		return
 	}
-	
+
 	fmt.Printf("环境变量配置 - 服务器主机: %s\n", envConfig.GetString("server.host"))
 	fmt.Printf("环境变量配置 - 服务器端口: %d\n", envConfig.GetInt("server.port"))
 	fmt.Printf("环境变量配置 - 调试模式: %v\n", envConfig.GetBool("debug"))
@@ -179,22 +179,22 @@ func envConfigExample() {
 // profileConfigExample 配置档案管理示例
 func profileConfigExample() {
 	pm := config.GetProfileManager()
-	
+
 	// 设置环境变量来模拟不同环境
 	os.Setenv("APP_ENV", "development")
-	
+
 	// 自动检测并加载配置档案
 	config, err := pm.AutoDetectProfile()
 	if err != nil {
 		log.Printf("自动加载配置档案失败: %v", err)
 		return
 	}
-	
+
 	fmt.Printf("当前活跃档案: %s\n", pm.GetActiveProfile())
 	fmt.Printf("档案配置 - 调试模式: %v\n", config.GetBool("debug"))
 	fmt.Printf("档案配置 - 日志级别: %s\n", config.GetString("log.level"))
 	fmt.Printf("档案配置 - 服务器端口: %d\n", config.GetInt("server.port"))
-	
+
 	// 切换到生产环境
 	prodConfig, err := pm.LoadProfile("production")
 	if err != nil {
@@ -210,16 +210,16 @@ func profileConfigExample() {
 // configWatcherExample 配置监听器示例
 func configWatcherExample() {
 	config := config.NewConfig(nil)
-	
+
 	// 添加监听器
 	watcher := &ConfigWatcher{name: "示例监听器"}
 	config.AddWatcher(watcher)
-	
+
 	// 设置一些配置值
 	config.Set("server.port", 8080)
 	config.Set("debug", true)
 	config.Set("database.host", "localhost")
-	
+
 	// 修改配置值
 	config.Set("server.port", 9090)
 	config.Set("debug", false)
@@ -229,14 +229,14 @@ func configWatcherExample() {
 func structMappingExample() {
 	// 创建配置
 	config := config.NewConfig(nil)
-	
+
 	// 设置配置值
 	config.Set("server.host", "localhost")
 	config.Set("server.port", 8080)
 	config.Set("server.read_timeout", "30s")
 	config.Set("server.write_timeout", "30s")
 	config.Set("server.max_conns", 1000)
-	
+
 	config.Set("database.driver", "postgres")
 	config.Set("database.host", "localhost")
 	config.Set("database.port", 5432)
@@ -244,29 +244,29 @@ func structMappingExample() {
 	config.Set("database.password", "password")
 	config.Set("database.database", "mydb")
 	config.Set("database.ssl_mode", "disable")
-	
+
 	config.Set("redis.host", "localhost")
 	config.Set("redis.port", 6379)
 	config.Set("redis.password", "")
 	config.Set("redis.db", 0)
-	
+
 	config.Set("log.level", "info")
 	config.Set("log.format", "json")
 	config.Set("log.output", "stdout")
-	
+
 	config.Set("debug", true)
-	
+
 	// 映射到结构体
 	var appConfig AppConfig
 	if err := config.Unmarshal(&appConfig); err != nil {
 		log.Printf("映射到结构体失败: %v", err)
 		return
 	}
-	
+
 	fmt.Printf("应用配置: %+v\n", appConfig)
 	fmt.Printf("服务器配置: %+v\n", appConfig.Server)
 	fmt.Printf("数据库配置: %+v\n", appConfig.Database)
-	
+
 	// 映射单个键到结构体
 	var serverConfig ServerConfig
 	if err := config.UnmarshalKey("server", &serverConfig); err != nil {
@@ -284,25 +284,25 @@ func configMergeExample() {
 	baseConfig.Set("server.port", 8080)
 	baseConfig.Set("database.host", "localhost")
 	baseConfig.Set("database.port", 5432)
-	
+
 	// 创建覆盖配置
 	overrideConfig := config.NewConfig(nil)
 	overrideConfig.Set("server.port", 9090)
 	overrideConfig.Set("database.password", "secret")
 	overrideConfig.Set("redis.host", "redis.example.com")
-	
+
 	fmt.Printf("合并前基础配置: %+v\n", baseConfig.GetAll())
 	fmt.Printf("覆盖配置: %+v\n", overrideConfig.GetAll())
-	
+
 	// 合并配置
 	baseConfig.Merge(overrideConfig)
-	
+
 	fmt.Printf("合并后配置: %+v\n", baseConfig.GetAll())
-	
+
 	// 克隆配置
 	clonedConfig := baseConfig.Clone()
 	clonedConfig.Set("new.key", "new.value")
-	
+
 	fmt.Printf("原始配置: %+v\n", baseConfig.GetAll())
 	fmt.Printf("克隆配置: %+v\n", clonedConfig.GetAll())
 }
@@ -329,11 +329,11 @@ func createExampleConfigFiles() {
   },
   "debug": true
 }`
-	
+
 	if err := os.WriteFile("example.json", []byte(jsonContent), 0644); err != nil {
 		log.Printf("创建JSON配置文件失败: %v", err)
 	}
-	
+
 	// 创建YAML配置文件
 	yamlContent := `server:
   host: localhost
@@ -364,11 +364,11 @@ log:
 
 debug: true
 `
-	
+
 	if err := os.WriteFile("example.yaml", []byte(yamlContent), 0644); err != nil {
 		log.Printf("创建YAML配置文件失败: %v", err)
 	}
-	
+
 	// 创建TOML配置文件
 	tomlContent := `debug = true
 
@@ -399,7 +399,7 @@ level = "info"
 format = "json"
 output = "stdout"
 `
-	
+
 	if err := os.WriteFile("example.toml", []byte(tomlContent), 0644); err != nil {
 		log.Printf("创建TOML配置文件失败: %v", err)
 	}

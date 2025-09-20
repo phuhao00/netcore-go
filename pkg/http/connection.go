@@ -1,4 +1,4 @@
-﻿// Package http HTTP连接实现
+// Package http HTTP连接实现
 // Author: NetCore-Go Team
 // Created: 2024
 
@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/netcore-go/pkg/core"
+	"github.com/phuhao00/netcore-go/pkg/core"
 )
 
 // HTTPConnection HTTP连接实现

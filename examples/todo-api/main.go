@@ -15,19 +15,19 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
-	"github.com/netcore-go/pkg/http"
+	"github.com/phuhao00/netcore-go/pkg/http"
 )
 
 // Todo represents a todo item
 type Todo struct {
-	ID          uint      `json:"id" gorm:"primarykey"`
-	Title       string    `json:"title" gorm:"not null" validate:"required,min=1,max=200"`
-	Description string    `json:"description" gorm:"type:text"`
-	Completed   bool      `json:"completed" gorm:"default:false"`
-	Priority    string    `json:"priority" gorm:"default:'medium'" validate:"oneof=low medium high"`
+	ID          uint       `json:"id" gorm:"primarykey"`
+	Title       string     `json:"title" gorm:"not null" validate:"required,min=1,max=200"`
+	Description string     `json:"description" gorm:"type:text"`
+	Completed   bool       `json:"completed" gorm:"default:false"`
+	Priority    string     `json:"priority" gorm:"default:'medium'" validate:"oneof=low medium high"`
 	DueDate     *time.Time `json:"due_date,omitempty"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
 }
 
 // TodoRequest represents the request payload for creating/updating todos
@@ -283,9 +283,9 @@ func (h *TodoHandler) GetTodos(c *http.HTTPContext) error {
 	return c.JSON(resp, nethttp.StatusOK, map[string]interface{}{
 		"todos": response,
 		"pagination": map[string]interface{}{
-			"page":       page,
-			"limit":      limit,
-			"total":      total,
+			"page":        page,
+			"limit":       limit,
+			"total":       total,
 			"total_pages": (total + int64(limit) - 1) / int64(limit),
 		},
 	})
@@ -317,8 +317,8 @@ func (h *TodoHandler) GetTodo(c *http.HTTPContext) error {
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return c.JSON(resp, nethttp.StatusNotFound, map[string]interface{}{
-			"error": "Todo not found",
-		})
+				"error": "Todo not found",
+			})
 		}
 		return c.JSON(resp, nethttp.StatusInternalServerError, map[string]interface{}{
 			"error": "Failed to retrieve todo",
@@ -421,8 +421,8 @@ func (h *TodoHandler) UpdateTodo(c *http.HTTPContext) error {
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return c.JSON(resp, nethttp.StatusNotFound, map[string]interface{}{
-			"error": "Todo not found",
-		})
+				"error": "Todo not found",
+			})
 		}
 		return c.JSON(resp, nethttp.StatusInternalServerError, map[string]interface{}{
 			"error": "Failed to update todo",
@@ -469,8 +469,8 @@ func (h *TodoHandler) DeleteTodo(c *http.HTTPContext) error {
 	if err := h.service.Delete(uint(id)); err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return c.JSON(resp, nethttp.StatusNotFound, map[string]interface{}{
-			"error": "Todo not found",
-		})
+				"error": "Todo not found",
+			})
 		}
 		return c.JSON(resp, nethttp.StatusInternalServerError, map[string]interface{}{
 			"error": "Failed to delete todo",
@@ -510,8 +510,8 @@ func (h *TodoHandler) ToggleTodo(c *http.HTTPContext) error {
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return c.JSON(resp, nethttp.StatusNotFound, map[string]interface{}{
-			"error": "Todo not found",
-		})
+				"error": "Todo not found",
+			})
 		}
 		return c.JSON(resp, nethttp.StatusInternalServerError, map[string]interface{}{
 			"error": "Failed to toggle todo",
@@ -560,7 +560,7 @@ func adaptHandler(handler func(*http.HTTPContext) error) http.HTTPHandlerFunc {
 	return func(c *http.HTTPContext, resp *http.HTTPResponse) {
 		// 初始化响应
 		resp.Headers = make(map[string]string)
-		
+
 		// 创建一个临时的HTTPContext来传递给原处理器
 		// 原处理器会在内部创建HTTPResponse并调用c.JSON等方法
 		if err := handler(c); err != nil {

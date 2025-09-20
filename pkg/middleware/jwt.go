@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/netcore-go/pkg/core"
+	"github.com/phuhao00/netcore-go/pkg/core"
 )
 
 // JWTClaims JWT声明

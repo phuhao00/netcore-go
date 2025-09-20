@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	testing "github.com/netcore-go/pkg/testing"
+	testing "github.com/phuhao00/netcore-go/pkg/testing"
 )
 
 func main() {
@@ -63,8 +63,8 @@ func runIntegrationTests(suite *testing.IntegrationTestSuite) {
 	// 添加模拟数据库
 	mockDB := testing.NewMockDatabase()
 	mockDB.Set("user:1", map[string]interface{}{
-		"id":   1,
-		"name": "John Doe",
+		"id":    1,
+		"name":  "John Doe",
 		"email": "john@example.com",
 	})
 	suite.AddMockDatabase("users", mockDB)
@@ -118,7 +118,7 @@ func runE2ETests(suite *testing.E2ETestSuite) {
 						"age":   28,
 					},
 					"headers": map[string]string{
-						"Content-Type": "application/json",
+						"Content-Type":  "application/json",
 						"Authorization": "Bearer test-token",
 					},
 				},
@@ -164,7 +164,7 @@ func runE2ETests(suite *testing.E2ETestSuite) {
 						"age":   29,
 					},
 					"headers": map[string]string{
-						"Content-Type": "application/json",
+						"Content-Type":  "application/json",
 						"Authorization": "Bearer test-token",
 					},
 				},

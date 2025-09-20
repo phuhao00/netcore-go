@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/netcore-go/pkg/core"
-	"github.com/netcore-go/pkg/kcp"
+	"github.com/phuhao00/netcore-go/pkg/core"
+	"github.com/phuhao00/netcore-go/pkg/kcp"
 )
 
 // GameMessage 游戏消息
@@ -57,14 +57,14 @@ func NewGameClient(address string) *GameClient {
 	client := &GameClient{
 		position: PlayerPosition{X: 0, Y: 0, Z: 0},
 	}
-	
+
 	// 创建KCP客户端
 	kcpConfig := kcp.DefaultKCPConfig()
 	kcpConfig.Nodelay = 1   // 启用nodelay模式
 	kcpConfig.Interval = 10 // 10ms间隔
 	kcpConfig.Resend = 2    // 快速重传
 	kcpConfig.NC = 1        // 关闭流控
-	
+
 	client.client = kcp.NewKCPClient(address,
 		kcp.WithKCPConfig(kcpConfig),
 		kcp.WithClientTimeout(30*time.Second),
@@ -73,7 +73,7 @@ func NewGameClient(address string) *GameClient {
 		kcp.WithOnConnect(client.onConnect),
 		kcp.WithOnDisconnect(client.onDisconnect),
 	)
-	
+
 	return client
 }
 
@@ -81,16 +81,16 @@ func NewGameClient(address string) *GameClient {
 func (c *GameClient) onConnect() {
 	c.connected = true
 	log.Println("Connected to KCP Game Server!")
-	
+
 	// 获取玩家ID
 	if conn := c.client.GetConnection(); conn != nil {
 		c.playerID = conn.ID()
 		c.playerName = fmt.Sprintf("Player_%s", c.playerID[:8])
 	}
-	
+
 	// 开始定期发送ping
 	go c.pingLoop()
-	
+
 	// 开始随机移动（模拟游戏行为）
 	go c.randomMovement()
 }
@@ -112,7 +112,7 @@ func (c *GameClient) onMessage(msg core.Message) {
 		log.Printf("Failed to parse game message: %v", err)
 		return
 	}
-	
+
 	// 处理不同类型的消息
 	switch gameMsg.Type {
 	case "welcome":
@@ -215,14 +215,14 @@ func (c *GameClient) handlePlayersList(gameMsg GameMessage) {
 func (c *GameClient) sendPing() {
 	c.lastPing = time.Now()
 	c.pingCount++
-	
+
 	pingMsg := GameMessage{
 		Type:      "ping",
 		PlayerID:  c.playerID,
 		Data:      map[string]interface{}{"count": c.pingCount},
 		Timestamp: time.Now().Unix(),
 	}
-	
+
 	c.sendGameMessage(pingMsg)
 }
 
@@ -230,14 +230,14 @@ func (c *GameClient) updatePosition(x, y, z float64) {
 	c.position.X = x
 	c.position.Y = y
 	c.position.Z = z
-	
+
 	posMsg := GameMessage{
 		Type:      "position_update",
 		PlayerID:  c.playerID,
 		Data:      map[string]interface{}{"x": x, "y": y, "z": z},
 		Timestamp: time.Now().Unix(),
 	}
-	
+
 	c.sendGameMessage(posMsg)
 }
 
@@ -252,7 +252,7 @@ func (c *GameClient) performAction(action, target string, params interface{}) {
 		},
 		Timestamp: time.Now().Unix(),
 	}
-	
+
 	c.sendGameMessage(actionMsg)
 }
 
@@ -263,7 +263,7 @@ func (c *GameClient) sendChat(message string) {
 		Data:      map[string]interface{}{"message": message},
 		Timestamp: time.Now().Unix(),
 	}
-	
+
 	c.sendGameMessage(chatMsg)
 }
 
@@ -274,7 +274,7 @@ func (c *GameClient) getPlayers() {
 		Data:      map[string]interface{}{},
 		Timestamp: time.Now().Unix(),
 	}
-	
+
 	c.sendGameMessage(playersMsg)
 }
 
@@ -284,13 +284,13 @@ func (c *GameClient) sendGameMessage(gameMsg GameMessage) {
 		log.Printf("Failed to marshal game message: %v", err)
 		return
 	}
-	
+
 	msg := core.Message{
 		Type:      core.MessageTypeJSON,
 		Data:      data,
 		Timestamp: time.Now(),
 	}
-	
+
 	if err := c.client.SendMessage(msg); err != nil {
 		log.Printf("Failed to send game message: %v", err)
 	}
@@ -300,7 +300,7 @@ func (c *GameClient) sendGameMessage(gameMsg GameMessage) {
 func (c *GameClient) pingLoop() {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ticker.C:
@@ -314,7 +314,7 @@ func (c *GameClient) pingLoop() {
 func (c *GameClient) randomMovement() {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ticker.C:
@@ -324,7 +324,7 @@ func (c *GameClient) randomMovement() {
 				y := c.position.Y + (rand.Float64()-0.5)*10
 				z := c.position.Z + (rand.Float64()-0.5)*2
 				c.updatePosition(x, y, z)
-				
+
 				// 随机执行动作
 				if rand.Float64() < 0.3 {
 					actions := []string{"jump", "attack", "defend", "use_item", "cast_spell"}
@@ -357,29 +357,29 @@ func getString(data map[string]interface{}, key string) string {
 
 func main() {
 	log.Println("Starting KCP Game Client example...")
-	
+
 	// 创建游戏客户端
 	client := NewGameClient("localhost:8085")
-	
+
 	defer func() {
 		if err := client.client.Close(); err != nil {
 			log.Printf("Error closing client: %v", err)
 		}
 	}()
-	
+
 	// 连接到服务器
 	log.Println("Connecting to KCP Game Server...")
 	if err := client.client.Connect(); err != nil {
 		log.Fatalf("Failed to connect to server: %v", err)
 	}
-	
+
 	// 等待连接建立
 	time.Sleep(2 * time.Second)
-	
+
 	if !client.connected {
 		log.Fatal("Failed to establish connection")
 	}
-	
+
 	// 打印客户端信息
 	log.Println("\n=== KCP Game Client Information ===")
 	log.Printf("Player ID: %s", client.playerID)
@@ -396,32 +396,32 @@ func main() {
 	log.Println("  auto          - Toggle auto movement")
 	log.Println("  quit          - Exit client")
 	log.Println("=====================================\n")
-	
+
 	// 获取玩家列表
 	client.getPlayers()
-	
+
 	// 命令行交互
 	scanner := bufio.NewScanner(os.Stdin)
 	autoMovement := true
-	
+
 	for {
 		fmt.Print("> ")
 		if !scanner.Scan() {
 			break
 		}
-		
+
 		input := strings.TrimSpace(scanner.Text())
 		if input == "" {
 			continue
 		}
-		
+
 		parts := strings.Fields(input)
 		command := parts[0]
-		
+
 		switch command {
 		case "ping":
 			client.sendPing()
-			
+
 		case "move":
 			if len(parts) >= 4 {
 				x, _ := strconv.ParseFloat(parts[1], 64)
@@ -432,7 +432,7 @@ func main() {
 			} else {
 				log.Println("Usage: move <x> <y> <z>")
 			}
-			
+
 		case "action":
 			if len(parts) >= 2 {
 				action := parts[1]
@@ -441,7 +441,7 @@ func main() {
 			} else {
 				log.Println("Usage: action <name>")
 			}
-			
+
 		case "chat":
 			if len(parts) >= 2 {
 				message := strings.Join(parts[1:], " ")
@@ -449,10 +449,10 @@ func main() {
 			} else {
 				log.Println("Usage: chat <message>")
 			}
-			
+
 		case "players":
 			client.getPlayers()
-			
+
 		case "stats":
 			if stats := client.client.GetStats(); stats != nil {
 				log.Printf("\n=== Connection Stats ===")
@@ -468,7 +468,7 @@ func main() {
 				}
 				log.Println("========================")
 			}
-			
+
 			if kcpStats := client.client.GetKCPStats(); kcpStats != nil {
 				log.Printf("\n=== KCP Stats ===")
 				for key, value := range kcpStats {
@@ -476,7 +476,7 @@ func main() {
 				}
 				log.Println("=================")
 			}
-			
+
 		case "auto":
 			autoMovement = !autoMovement
 			if autoMovement {
@@ -485,19 +485,18 @@ func main() {
 			} else {
 				log.Println("Auto movement disabled")
 			}
-			
+
 		case "quit", "exit":
 			log.Println("Goodbye!")
 			return
-			
+
 		default:
 			log.Printf("Unknown command: %s", command)
 			log.Println("Type 'quit' to exit or use available commands")
 		}
 	}
-	
+
 	if err := scanner.Err(); err != nil {
 		log.Printf("Error reading input: %v", err)
 	}
 }
-

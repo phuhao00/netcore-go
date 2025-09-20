@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	netcore "github.com/netcore-go"
+	netcore "github.com/phuhao00/netcore-go"
 )
 
 // BenchmarkHandler WebSocket性能测试处理器
@@ -36,7 +36,7 @@ func (h *BenchmarkHandler) OnConnect(conn netcore.Connection) {
 	h.mu.Lock()
 	h.connections[conn.ID()] = conn
 	h.mu.Unlock()
-	
+
 	fmt.Printf("Client connected: %s (Total: %d)\n", conn.RemoteAddr(), len(h.connections))
 }
 
@@ -44,7 +44,7 @@ func (h *BenchmarkHandler) OnConnect(conn netcore.Connection) {
 func (h *BenchmarkHandler) OnMessage(conn netcore.Connection, msg netcore.Message) {
 	atomic.AddInt64(&h.messageCount, 1)
 	atomic.AddInt64(&h.byteCount, int64(len(msg.Data)))
-	
+
 	// 简单回声，用于性能测试
 	response := netcore.NewMessage(msg.Type, msg.Data)
 	conn.SendMessage(*response)
@@ -55,12 +55,12 @@ func (h *BenchmarkHandler) OnDisconnect(conn netcore.Connection, err error) {
 	h.mu.Lock()
 	delete(h.connections, conn.ID())
 	h.mu.Unlock()
-	
+
 	if err != nil {
-		fmt.Printf("Client disconnected with error %s: %v (Total: %d)\n", 
+		fmt.Printf("Client disconnected with error %s: %v (Total: %d)\n",
 			conn.RemoteAddr(), err, len(h.connections))
 	} else {
-		fmt.Printf("Client disconnected: %s (Total: %d)\n", 
+		fmt.Printf("Client disconnected: %s (Total: %d)\n",
 			conn.RemoteAddr(), len(h.connections))
 	}
 }
@@ -70,11 +70,11 @@ func (h *BenchmarkHandler) GetStats() (int64, int64, int, time.Duration) {
 	h.mu.RLock()
 	connCount := len(h.connections)
 	h.mu.RUnlock()
-	
+
 	msgCount := atomic.LoadInt64(&h.messageCount)
 	byteCount := atomic.LoadInt64(&h.byteCount)
 	duration := time.Since(h.startTime)
-	
+
 	return msgCount, byteCount, connCount, duration
 }
 
@@ -86,7 +86,7 @@ func (h *BenchmarkHandler) Broadcast(msg netcore.Message) {
 		connections = append(connections, conn)
 	}
 	h.mu.RUnlock()
-	
+
 	for _, conn := range connections {
 		if conn.IsActive() {
 			conn.SendMessage(msg)
@@ -96,10 +96,10 @@ func (h *BenchmarkHandler) Broadcast(msg netcore.Message) {
 
 func main() {
 	fmt.Println("Starting NetCore-Go WebSocket Benchmark Server...")
-	
+
 	// 创建性能测试处理器
 	handler := NewBenchmarkHandler()
-	
+
 	// 创建WebSocket服务器（高性能配置）
 	server := netcore.NewWebSocketServer(
 		netcore.WithReadBufferSize(8192),
@@ -111,10 +111,10 @@ func main() {
 		netcore.WithMemoryPool(true),
 		netcore.WithGoroutinePool(true),
 	)
-	
+
 	// 设置消息处理器
 	server.SetHandler(handler)
-	
+
 	// 启动服务器
 	go func() {
 		fmt.Println("WebSocket benchmark server listening on :8083")
@@ -122,24 +122,24 @@ func main() {
 			log.Fatalf("Failed to start WebSocket server: %v", err)
 		}
 	}()
-	
+
 	// 启动性能统计
 	go func() {
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
-		
+
 		for {
 			select {
 			case <-ticker.C:
 				msgCount, byteCount, connCount, duration := handler.GetStats()
 				serverStats := server.GetStats()
-				
+
 				// 计算性能指标
 				seconds := duration.Seconds()
 				msgPerSec := float64(msgCount) / seconds
 				bytesPerSec := float64(byteCount) / seconds
 				mbPerSec := bytesPerSec / (1024 * 1024)
-				
+
 				fmt.Printf("\n=== WebSocket Performance Stats ===\n")
 				fmt.Printf("Runtime: %.1fs\n", seconds)
 				fmt.Printf("Active Connections: %d\n", connCount)
@@ -156,13 +156,13 @@ func main() {
 			}
 		}
 	}()
-	
+
 	// 启动广播测试
 	go func() {
 		time.Sleep(10 * time.Second) // 等待连接建立
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
-		
+
 		for {
 			select {
 			case <-ticker.C:
@@ -176,7 +176,7 @@ func main() {
 			}
 		}
 	}()
-	
+
 	fmt.Println("WebSocket benchmark server started successfully!")
 	fmt.Println("Performance test instructions:")
 	fmt.Println("1. Use WebSocket client tools to connect to ws://localhost:8083")
@@ -191,8 +191,7 @@ func main() {
 	fmt.Println("- Connection stability testing")
 	fmt.Println("")
 	fmt.Println("Press Ctrl+C to stop the server")
-	
+
 	// 保持服务器运行
 	select {}
 }
-

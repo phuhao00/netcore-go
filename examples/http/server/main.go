@@ -12,9 +12,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/netcore-go"
-	"github.com/netcore-go/pkg/core"
-	"github.com/netcore-go/pkg/http"
+	"github.com/phuhao00/netcore-go"
+	"github.com/phuhao00/netcore-go/pkg/core"
+	"github.com/phuhao00/netcore-go/pkg/http"
 )
 
 // User 用户结构
@@ -316,4 +316,3 @@ func main() {
 	}
 	fmt.Println("HTTP Server stopped")
 }
-

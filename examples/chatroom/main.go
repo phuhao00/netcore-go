@@ -8,21 +8,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/netcore-go"
-	"github.com/netcore-go/pkg/core"
-	"github.com/netcore-go/pkg/longpoll"
-	"github.com/netcore-go/pkg/pool"
+	"github.com/phuhao00/netcore-go"
+	"github.com/phuhao00/netcore-go/pkg/core"
 )
 
 // ChatMessage 聊天消息
 type ChatMessage struct {
-	ID        string    `json:"id"`
-	Type      string    `json:"type"` // message, join, leave, system
-	RoomID    string    `json:"room_id"`
-	UserID    string    `json:"user_id"`
-	Username  string    `json:"username"`
-	Content   string    `json:"content"`
-	Timestamp time.Time `json:"timestamp"`
+	ID        string                 `json:"id"`
+	Type      string                 `json:"type"` // message, join, leave, system
+	RoomID    string                 `json:"room_id"`
+	UserID    string                 `json:"user_id"`
+	Username  string                 `json:"username"`
+	Content   string                 `json:"content"`
+	Timestamp time.Time              `json:"timestamp"`
 	Metadata  map[string]interface{} `json:"metadata,omitempty"`
 }
 
@@ -39,36 +37,34 @@ type User struct {
 
 // ChatRoom 聊天室
 type ChatRoom struct {
-	ID          string             `json:"id"`
-	Name        string             `json:"name"`
-	Description string             `json:"description"`
-	Users       map[string]*User   `json:"users"`
-	Messages    []*ChatMessage     `json:"messages"`
-	MaxUsers    int                `json:"max_users"`
-	MaxMessages int                `json:"max_messages"`
-	CreatedAt   time.Time          `json:"created_at"`
-	mu          sync.RWMutex       `json:"-"`
+	ID          string           `json:"id"`
+	Name        string           `json:"name"`
+	Description string           `json:"description"`
+	Users       map[string]*User `json:"users"`
+	Messages    []*ChatMessage   `json:"messages"`
+	MaxUsers    int              `json:"max_users"`
+	MaxMessages int              `json:"max_messages"`
+	CreatedAt   time.Time        `json:"created_at"`
+	mu          sync.RWMutex     `json:"-"`
 }
 
 // ChatServer 聊天服务器
 type ChatServer struct {
-	server    core.Server
-	rooms     map[string]*ChatRoom
-	users     map[string]*User
-	longPoll  *longpoll.LongPollManager
-	pool      pool.ConnectionPool
-	stats     *ChatStats
-	mu        sync.RWMutex
+	server   core.Server
+	rooms    map[string]*ChatRoom
+	users    map[string]*User
+	stats    *ChatStats
+	mu       sync.RWMutex
 }
 
 // ChatStats 聊天统计
 type ChatStats struct {
-	TotalUsers      int64 `json:"total_users"`
-	ActiveRooms     int64 `json:"active_rooms"`
-	TotalMessages   int64 `json:"total_messages"`
-	MessagesPerMin  int64 `json:"messages_per_min"`
-	LastUpdateTime  int64 `json:"last_update_time"`
-	mu              sync.RWMutex
+	TotalUsers     int64 `json:"total_users"`
+	ActiveRooms    int64 `json:"active_rooms"`
+	TotalMessages  int64 `json:"total_messages"`
+	MessagesPerMin int64 `json:"messages_per_min"`
+	LastUpdateTime int64 `json:"last_update_time"`
+	mu             sync.RWMutex
 }
 
 // NewChatServer 创建聊天服务器
@@ -78,21 +74,6 @@ func NewChatServer() *ChatServer {
 		users: make(map[string]*User),
 		stats: &ChatStats{},
 	}
-
-	// 创建连接池
-	cs.pool = pool.NewConnectionPool(&pool.Config{
-		MinSize:     5,
-		MaxSize:     500,
-		IdleTimeout: time.Minute * 10,
-		ConnTimeout: time.Second * 30,
-	})
-
-	// 创建长轮询管理器
-	cs.longPoll = longpoll.NewManager(&longpoll.Config{
-		MaxHistory:      1000,
-		CleanupInterval: time.Minute,
-		DefaultTimeout:  time.Second * 30,
-	})
 
 	// 创建默认房间
 	cs.createDefaultRooms()
@@ -124,19 +105,31 @@ func (cs *ChatServer) createDefaultRooms() {
 	}
 }
 
+// ChatHandler 实现core.MessageHandler接口
+type ChatHandler struct {
+	chatServer *ChatServer
+}
+
+func (h *ChatHandler) OnConnect(conn core.Connection) {
+	h.chatServer.handleConnect(conn)
+}
+
+func (h *ChatHandler) OnMessage(conn core.Connection, msg core.Message) {
+	h.chatServer.handleMessage(conn, msg.Data)
+}
+
+func (h *ChatHandler) OnDisconnect(conn core.Connection, err error) {
+	h.chatServer.handleDisconnect(conn)
+}
+
 // Start 启动聊天服务器
 func (cs *ChatServer) Start(addr string) error {
-	config := &netcore.Config{
-		Host: "localhost",
-		Port: 8080,
-	}
+	// 使用TCP服务器
+	cs.server = netcore.NewTCPServer()
 
-	cs.server = netcore.NewServer(config)
-
-	// 设置处理器
-	// cs.server.SetMessageHandler(cs.handleMessage)
-	// cs.server.SetConnectHandler(cs.handleConnect)
-	// cs.server.SetDisconnectHandler(cs.handleDisconnect)
+	// 创建并设置处理器
+	handler := &ChatHandler{chatServer: cs}
+	cs.server.SetHandler(handler)
 
 	// 启动统计更新
 	go cs.updateStats()
@@ -151,9 +144,6 @@ func (cs *ChatServer) Start(addr string) error {
 // handleConnect 处理连接
 func (cs *ChatServer) handleConnect(conn core.Connection) {
 	log.Printf("新用户连接: %s", conn.RemoteAddr())
-
-	// 添加到连接池
-	// cs.pool.AddConnection(conn) // 暂时注释掉，因为类型不匹配
 
 	// 发送欢迎消息
 	welcomeMsg := &ChatMessage{
@@ -172,9 +162,6 @@ func (cs *ChatServer) handleConnect(conn core.Connection) {
 // handleDisconnect 处理断开连接
 func (cs *ChatServer) handleDisconnect(conn core.Connection) {
 	log.Printf("用户断开连接: %s", conn.RemoteAddr())
-
-	// 从连接池移除
-	// cs.pool.RemoveConnection(conn) // 暂时注释掉，因为类型不匹配
 
 	// 查找并移除用户
 	cs.mu.Lock()
@@ -298,12 +285,12 @@ func (cs *ChatServer) handleJoin(conn core.Connection, userID, username, roomID 
 
 	// 发送加入成功消息
 	joinMsg := &ChatMessage{
-		ID:       cs.generateMessageID(),
-		Type:     "joined",
-		RoomID:   roomID,
-		UserID:   userID,
-		Username: username,
-		Content:  fmt.Sprintf("成功加入房间 %s", room.Name),
+		ID:        cs.generateMessageID(),
+		Type:      "joined",
+		RoomID:    roomID,
+		UserID:    userID,
+		Username:  username,
+		Content:   fmt.Sprintf("成功加入房间 %s", room.Name),
 		Timestamp: time.Now(),
 		Metadata: map[string]interface{}{
 			"room_info": map[string]interface{}{
@@ -334,12 +321,7 @@ func (cs *ChatServer) handleJoin(conn core.Connection, userID, username, roomID 
 	cs.broadcastToRoom(roomID, systemMsg, userID)
 	cs.addMessageToRoom(roomID, systemMsg)
 
-	// 发布长轮询事件
-	cs.longPoll.Publish(&longpoll.Event{
-		ID:   systemMsg.ID,
-		Type: "user_joined",
-		Data: systemMsg,
-	})
+	// 长轮询功能已移除
 }
 
 // handleLeave 处理离开房间
@@ -380,12 +362,7 @@ func (cs *ChatServer) handleLeave(conn core.Connection, userID string) {
 	cs.broadcastToRoom(user.RoomID, systemMsg)
 	cs.addMessageToRoom(user.RoomID, systemMsg)
 
-	// 发布长轮询事件
-	cs.longPoll.Publish(&longpoll.Event{
-		ID:   systemMsg.ID,
-		Type: "user_left",
-		Data: systemMsg,
-	})
+	// 长轮询功能已移除
 }
 
 // handleChatMessage 处理聊天消息
@@ -435,12 +412,7 @@ func (cs *ChatServer) handleChatMessage(conn core.Connection, userID, roomID, co
 	cs.stats.TotalMessages++
 	cs.stats.mu.Unlock()
 
-	// 发布长轮询事件
-	cs.longPoll.Publish(&longpoll.Event{
-		ID:   chatMsg.ID,
-		Type: "message",
-		Data: chatMsg,
-	})
+	// 长轮询功能已移除
 }
 
 // handlePrivateMessage 处理私聊消息
@@ -474,7 +446,7 @@ func (cs *ChatServer) handlePrivateMessage(conn core.Connection, senderID, targe
 		Content:   content,
 		Timestamp: time.Now(),
 		Metadata: map[string]interface{}{
-			"target_user_id": targetUserID,
+			"target_user_id":  targetUserID,
 			"target_username": target.Username,
 		},
 	}
@@ -655,7 +627,7 @@ func (cs *ChatServer) broadcastToRoom(roomID string, msg *ChatMessage, excludeUs
 	room.mu.RLock()
 	for userID, user := range room.Users {
 		if !excludeMap[userID] {
-				coreMsg := core.NewMessage(core.MessageTypeJSON, data)
+			coreMsg := core.NewMessage(core.MessageTypeJSON, data)
 			user.Conn.SendMessage(*coreMsg)
 		}
 	}
@@ -734,7 +706,7 @@ func (cs *ChatServer) updateStats() {
 		cs.stats.LastUpdateTime = time.Now().Unix()
 		cs.stats.mu.Unlock()
 
-		log.Printf("聊天统计 - 用户: %d, 房间: %d, 消息/分钟: %d", 
+		log.Printf("聊天统计 - 用户: %d, 房间: %d, 消息/分钟: %d",
 			totalUsers, activeRooms, cs.stats.MessagesPerMin)
 	}
 }
@@ -776,14 +748,6 @@ func (cs *ChatServer) GetStats() *ChatStats {
 
 // Stop 停止聊天服务器
 func (cs *ChatServer) Stop() error {
-	// if cs.longPoll != nil {
-		// 	cs.longPoll.Stop()
-		// }
-
-	if cs.pool != nil {
-		cs.pool.Close()
-	}
-
 	if cs.server != nil {
 		return cs.server.Stop()
 	}
@@ -832,5 +796,3 @@ func main() {
 		log.Fatalf("启动聊天服务器失败: %v", err)
 	}
 }
-
-

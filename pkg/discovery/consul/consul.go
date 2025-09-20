@@ -14,7 +14,7 @@ import (
 
 	"github.com/hashicorp/consul/api"
 
-	"github.com/netcore-go/pkg/discovery"
+	"github.com/phuhao00/netcore-go/pkg/discovery"
 )
 
 // ConsulDiscovery Consul服务发现

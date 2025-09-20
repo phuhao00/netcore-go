@@ -14,23 +14,23 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/netcore-go"
-	"github.com/netcore-go/pkg/core"
-	netcorehttp "github.com/netcore-go/pkg/http"
+	"github.com/phuhao00/netcore-go"
+	"github.com/phuhao00/netcore-go/pkg/core"
+	netcorehttp "github.com/phuhao00/netcore-go/pkg/http"
 )
 
 // BenchmarkResult 基准测试结果
 type BenchmarkResult struct {
-	TotalRequests    int64         `json:"total_requests"`
-	SuccessRequests  int64         `json:"success_requests"`
-	FailedRequests   int64         `json:"failed_requests"`
-	TotalDuration    time.Duration `json:"total_duration"`
-	AvgResponseTime  time.Duration `json:"avg_response_time"`
-	MinResponseTime  time.Duration `json:"min_response_time"`
-	MaxResponseTime  time.Duration `json:"max_response_time"`
-	RequestsPerSec   float64       `json:"requests_per_sec"`
-	ThroughputMBps   float64       `json:"throughput_mbps"`
-	TotalBytes       int64         `json:"total_bytes"`
+	TotalRequests   int64         `json:"total_requests"`
+	SuccessRequests int64         `json:"success_requests"`
+	FailedRequests  int64         `json:"failed_requests"`
+	TotalDuration   time.Duration `json:"total_duration"`
+	AvgResponseTime time.Duration `json:"avg_response_time"`
+	MinResponseTime time.Duration `json:"min_response_time"`
+	MaxResponseTime time.Duration `json:"max_response_time"`
+	RequestsPerSec  float64       `json:"requests_per_sec"`
+	ThroughputMBps  float64       `json:"throughput_mbps"`
+	TotalBytes      int64         `json:"total_bytes"`
 }
 
 // HTTPBenchmarkHandler HTTP基准测试处理器
@@ -68,9 +68,9 @@ func (h *HTTPBenchmarkHandler) setupBenchmarkRoutes(server *netcorehttp.HTTPServ
 	server.HandleFunc("GET", "/json", func(ctx *netcorehttp.HTTPContext, resp *netcorehttp.HTTPResponse) {
 		atomic.AddInt64(&h.requestCount, 1)
 		data := map[string]interface{}{
-			"message": "Hello, World!",
+			"message":   "Hello, World!",
 			"timestamp": time.Now().Unix(),
-			"status": "success",
+			"status":    "success",
 		}
 		ctx.JSON(resp, 200, data)
 		atomic.AddInt64(&h.bytesSent, int64(len(resp.Body)))
@@ -106,11 +106,11 @@ func (h *HTTPBenchmarkHandler) setupBenchmarkRoutes(server *netcorehttp.HTTPServ
 	server.HandleFunc("GET", "/stats", func(ctx *netcorehttp.HTTPContext, resp *netcorehttp.HTTPResponse) {
 		stats := server.GetStats()
 		data := map[string]interface{}{
-			"requests_handled": atomic.LoadInt64(&h.requestCount),
-			"bytes_sent": atomic.LoadInt64(&h.bytesSent),
+			"requests_handled":   atomic.LoadInt64(&h.requestCount),
+			"bytes_sent":         atomic.LoadInt64(&h.bytesSent),
 			"active_connections": stats.ActiveConnections,
-			"total_connections": stats.TotalConnections,
-			"uptime_seconds": stats.Uptime,
+			"total_connections":  stats.TotalConnections,
+			"uptime_seconds":     stats.Uptime,
 		}
 		ctx.JSON(resp, 200, data)
 	})
@@ -320,4 +320,3 @@ func main() {
 	server.Stop()
 	fmt.Println("Benchmark completed!")
 }
-

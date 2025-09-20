@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/netcore-go"
+	"github.com/phuhao00/netcore-go"
 )
 
 // EchoHandler UDP回声处理器
@@ -26,7 +26,7 @@ func (h *EchoHandler) OnConnect(conn netcore.Connection) {
 // OnMessage 收到消息时调用
 func (h *EchoHandler) OnMessage(conn netcore.Connection, msg netcore.Message) {
 	fmt.Printf("[UDP] Received from %s: %s\n", conn.RemoteAddr().String(), string(msg.Data))
-	
+
 	// 回声响应
 	response := fmt.Sprintf("Echo: %s", string(msg.Data))
 	if err := conn.Send([]byte(response)); err != nil {
@@ -128,4 +128,3 @@ func main() {
 	fmt.Printf("Error Count: %d\n", stats.ErrorCount)
 	fmt.Printf("=======================\n")
 }
-

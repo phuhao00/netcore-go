@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/netcore-go"
+	"github.com/phuhao00/netcore-go"
 )
 
 // EchoHandler 回声消息处理器
@@ -20,8 +20,8 @@ type EchoHandler struct{}
 
 // OnConnect 连接建立时调用
 func (h *EchoHandler) OnConnect(conn netcore.Connection) {
-	fmt.Printf("[%s] Client connected: %s\n", 
-		time.Now().Format("2006-01-02 15:04:05"), 
+	fmt.Printf("[%s] Client connected: %s\n",
+		time.Now().Format("2006-01-02 15:04:05"),
 		conn.RemoteAddr().String())
 
 	// 发送欢迎消息
@@ -33,9 +33,9 @@ func (h *EchoHandler) OnConnect(conn netcore.Connection) {
 
 // OnMessage 收到消息时调用
 func (h *EchoHandler) OnMessage(conn netcore.Connection, msg netcore.Message) {
-	fmt.Printf("[%s] Received from %s: %s\n", 
-		time.Now().Format("2006-01-02 15:04:05"), 
-		conn.RemoteAddr().String(), 
+	fmt.Printf("[%s] Received from %s: %s\n",
+		time.Now().Format("2006-01-02 15:04:05"),
+		conn.RemoteAddr().String(),
 		string(msg.Data))
 
 	// 回声消息
@@ -48,12 +48,12 @@ func (h *EchoHandler) OnMessage(conn netcore.Connection, msg netcore.Message) {
 // OnDisconnect 连接断开时调用
 func (h *EchoHandler) OnDisconnect(conn netcore.Connection, err error) {
 	if err != nil {
-		fmt.Printf("[%s] Client disconnected with error: %s, error: %v\n", 
-			time.Now().Format("2006-01-02 15:04:05"), 
+		fmt.Printf("[%s] Client disconnected with error: %s, error: %v\n",
+			time.Now().Format("2006-01-02 15:04:05"),
 			conn.RemoteAddr().String(), err)
 	} else {
-		fmt.Printf("[%s] Client disconnected: %s\n", 
-			time.Now().Format("2006-01-02 15:04:05"), 
+		fmt.Printf("[%s] Client disconnected: %s\n",
+			time.Now().Format("2006-01-02 15:04:05"),
 			conn.RemoteAddr().String())
 	}
 }
@@ -123,4 +123,3 @@ func main() {
 	}
 	fmt.Println("Server stopped successfully")
 }
-

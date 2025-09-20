@@ -9,10 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/netcore-go"
-	"github.com/netcore-go/pkg/core"
-	"github.com/netcore-go/pkg/heartbeat"
-	"github.com/netcore-go/pkg/pool"
+	"github.com/phuhao00/netcore-go"
+	"github.com/phuhao00/netcore-go/pkg/core"
+	"github.com/phuhao00/netcore-go/pkg/heartbeat"
+	"github.com/phuhao00/netcore-go/pkg/pool"
 )
 
 // GameMessage 游戏消息
@@ -59,12 +59,12 @@ type GameServer struct {
 
 // GameStats 游戏统计
 type GameStats struct {
-	TotalPlayers    int64 `json:"total_players"`
-	ActiveRooms     int64 `json:"active_rooms"`
-	MessagesPerSec  int64 `json:"messages_per_sec"`
-	AverageLatency  int64 `json:"average_latency"`
-	LastUpdateTime  int64 `json:"last_update_time"`
-	mu              sync.RWMutex
+	TotalPlayers   int64 `json:"total_players"`
+	ActiveRooms    int64 `json:"active_rooms"`
+	MessagesPerSec int64 `json:"messages_per_sec"`
+	AverageLatency int64 `json:"average_latency"`
+	LastUpdateTime int64 `json:"last_update_time"`
+	mu             sync.RWMutex
 }
 
 // NewGameServer 创建游戏服务器
@@ -250,10 +250,10 @@ func (gs *GameServer) handleJoin(conn core.Connection, msg *GameMessage) {
 
 	// 通知房间其他玩家
 	gs.broadcastToRoom(roomID, &GameMessage{
-		Type:     "player_joined",
-		PlayerID: player.ID,
-		RoomID:   roomID,
-		Data:     player,
+		Type:      "player_joined",
+		PlayerID:  player.ID,
+		RoomID:    roomID,
+		Data:      player,
 		Timestamp: time.Now().Unix(),
 	}, player.ID)
 }
@@ -333,9 +333,9 @@ func (gs *GameServer) handleAttack(conn core.Connection, msg *GameMessage) {
 		PlayerID: msg.PlayerID,
 		RoomID:   msg.RoomID,
 		Data: map[string]interface{}{
-			"attacker": attacker.ID,
-			"target":   target.ID,
-			"damage":   damageValue,
+			"attacker":  attacker.ID,
+			"target":    target.ID,
+			"damage":    damageValue,
 			"target_hp": target.HP,
 		},
 		Timestamp: time.Now().Unix(),
@@ -652,5 +652,3 @@ func main() {
 		log.Fatalf("启动游戏服务器失败: %v", err)
 	}
 }
-
-

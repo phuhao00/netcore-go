@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/netcore-go/pkg/discovery"
+	"github.com/phuhao00/netcore-go/pkg/discovery"
 )
 
 // ServiceMeshType 服务网格类型

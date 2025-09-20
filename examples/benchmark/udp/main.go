@@ -13,7 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/netcore-go"
+	"github.com/phuhao00/netcore-go"
 )
 
 // BenchmarkHandler UDP性能测试处理器
@@ -33,7 +33,7 @@ func (h *BenchmarkHandler) OnConnect(conn netcore.Connection) {
 func (h *BenchmarkHandler) OnMessage(conn netcore.Connection, msg netcore.Message) {
 	atomic.AddInt64(&h.messageCount, 1)
 	atomic.AddInt64(&h.byteCount, int64(len(msg.Data)))
-	
+
 	// 简单回声，不做复杂处理
 	conn.Send(msg.Data)
 }
@@ -84,13 +84,13 @@ func runBenchmarkSuite() {
 
 	for i, tc := range testCases {
 		fmt.Printf("\n[Test %d/%d] %s\n", i+1, len(testCases), tc.name)
-		fmt.Printf("Clients: %d, Message Size: %d bytes, Duration: %v\n", 
+		fmt.Printf("Clients: %d, Message Size: %d bytes, Duration: %v\n",
 			tc.clientCount, tc.messageSize, tc.duration)
 		fmt.Println(strings.Repeat("-", 60))
-		
+
 		result := runBenchmark(tc.clientCount, tc.messageSize, tc.duration)
 		printBenchmarkResult(result)
-		
+
 		// 测试间隔
 		time.Sleep(2 * time.Second)
 	}
@@ -101,15 +101,15 @@ func runBenchmarkSuite() {
 
 // BenchmarkResult 性能测试结果
 type BenchmarkResult struct {
-	ClientCount     int
-	MessageSize     int
-	Duration        time.Duration
-	TotalMessages   int64
-	TotalBytes      int64
-	MessagesPerSec  float64
-	MBytesPerSec    float64
-	AvgLatency      time.Duration
-	ServerStats     interface{}
+	ClientCount    int
+	MessageSize    int
+	Duration       time.Duration
+	TotalMessages  int64
+	TotalBytes     int64
+	MessagesPerSec float64
+	MBytesPerSec   float64
+	AvgLatency     time.Duration
+	ServerStats    interface{}
 }
 
 // runBenchmark 运行单个性能测试
@@ -169,15 +169,15 @@ func runBenchmark(clientCount, messageSize int, duration time.Duration) *Benchma
 	avgLatency := actualDuration / time.Duration(totalMessages)
 
 	return &BenchmarkResult{
-		ClientCount:     clientCount,
-		MessageSize:     messageSize,
-		Duration:        actualDuration,
-		TotalMessages:   totalMessages,
-		TotalBytes:      handlerBytes,
-		MessagesPerSec:  messagesPerSec,
-		MBytesPerSec:    mBytesPerSec,
-		AvgLatency:      avgLatency,
-		ServerStats:     serverStats,
+		ClientCount:    clientCount,
+		MessageSize:    messageSize,
+		Duration:       actualDuration,
+		TotalMessages:  totalMessages,
+		TotalBytes:     handlerBytes,
+		MessagesPerSec: messagesPerSec,
+		MBytesPerSec:   mBytesPerSec,
+		AvgLatency:     avgLatency,
+		ServerStats:    serverStats,
 	}
 }
 
@@ -229,7 +229,7 @@ func printBenchmarkResult(result *BenchmarkResult) {
 	fmt.Printf("  Throughput: %.2f MB/s\n", result.MBytesPerSec)
 	fmt.Printf("  Avg Latency: %v\n", result.AvgLatency)
 	fmt.Printf("  Actual Duration: %v\n", result.Duration)
-	
+
 	if result.ServerStats != nil {
 		fmt.Printf("\nServer Stats:\n")
 		if stats, ok := result.ServerStats.(*netcore.ServerStats); ok {
@@ -241,4 +241,3 @@ func printBenchmarkResult(result *BenchmarkResult) {
 		}
 	}
 }
-
